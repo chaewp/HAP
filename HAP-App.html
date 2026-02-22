@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>AI 중고 인텔리전스</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:#07070F;color:#F1F5F9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;overscroll-behavior:none}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-track{background:#07070F}
+    ::-webkit-scrollbar-thumb{background:#8B5CF6;border-radius:2px}
+    input,textarea,button{font-family:inherit}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+    @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    .fade-in{animation:fadeIn .3s ease}
+    .spin{animation:spin 1s linear infinite}
+    .dot-pulse{animation:pulse 1.2s ease-in-out infinite}
+  </style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+/* ===== DESIGN TOKENS ===== */
+const C = {
+  bg:'#07070F', card:'#0F0F1B', card2:'#141422', card3:'#1A1A2E',
+  border:'rgba(139,92,246,0.18)', border2:'rgba(255,255,255,0.07)', border3:'rgba(139,92,246,0.4)',
+  t1:'#F1F5F9', t2:'rgba(241,245,249,0.6)', t3:'rgba(241,245,249,0.35)',
+  purple:'#8B5CF6', purpleD:'#6D28D9', purpleL:'#A78BFA', purpleXL:'#C4B5FD',
+  cyan:'#06B6D4', green:'#10B981', orange:'#F97316', red:'#EF4444', yellow:'#F59E0B',
+  gPurple:'linear-gradient(135deg,#8B5CF6,#6D28D9)',
+  gCyan:'linear-gradient(135deg,#06B6D4,#0891B2)',
+  gGreen:'linear-gradient(135deg,#10B981,#059669)',
+  gOrange:'linear-gradient(135deg,#F97316,#EA580C)',
+  gHero:'linear-gradient(135deg,#2D1B69 0%,#4C1D95 50%,#5B21B6 100%)',
+  gCard:'linear-gradient(135deg,rgba(139,92,246,0.1),rgba(6,182,212,0.05))',
+};
+
+/* ===== SVG ICONS ===== */
+const Ic = ({size=20,color='currentColor',style:s,children,...p}) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={s} {...p}>{children}</svg>
+);
+const IHome    = p=><Ic {...p}><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></Ic>;
+const IBrain   = p=><Ic {...p}><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.098-3.54 3 3 0 0 1-2.34-2.946A3 3 0 0 1 5 9.5a3 3 0 0 1 1.604-2.654A2.5 2.5 0 0 1 9.5 2z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.098-3.54 3 3 0 0 0 2.34-2.946A3 3 0 0 0 19 9.5a3 3 0 0 0-1.604-2.654A2.5 2.5 0 0 0 14.5 2z"/></Ic>;
+const IPlus    = p=><Ic {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Ic>;
+const IBell    = p=><Ic {...p}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></Ic>;
+const IUser    = p=><Ic {...p}><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></Ic>;
+const ISearch  = p=><Ic {...p}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></Ic>;
+const IHeart   = p=><Ic {...p}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></Ic>;
+const IStar    = p=><Ic {...p}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Ic>;
+const ITrendUp = p=><Ic {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></Ic>;
+const ITrendDn = p=><Ic {...p}><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></Ic>;
+const IZap     = p=><Ic {...p}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Ic>;
+const ITarget  = p=><Ic {...p}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></Ic>;
+const IShield  = p=><Ic {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></Ic>;
+const ISend    = p=><Ic {...p}><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></Ic>;
+const IChevR   = p=><Ic {...p}><polyline points="9 18 15 12 9 6"/></Ic>;
+const IFire    = p=><Ic {...p}><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></Ic>;
+const IDiamond = p=><Ic {...p}><polygon points="12 2 22 12 12 22 2 12"/></Ic>;
+const ICamera  = p=><Ic {...p}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></Ic>;
+const IMsg     = p=><Ic {...p}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></Ic>;
+const IPackage = p=><Ic {...p}><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></Ic>;
+const ISettings= p=><Ic {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></Ic>;
+const ILogOut  = p=><Ic {...p}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Ic>;
+const IBarChart= p=><Ic {...p}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></Ic>;
+const IEye     = p=><Ic {...p}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></Ic>;
+const IClock   = p=><Ic {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Ic>;
+
+/* ===== PRODUCTS DATA ===== */
+const PRODUCTS = [
+  {
+    id:1, cat:'패션', title:'나이키 에어맥스 97 실버불릿', price:89000, originalPrice:189000,
+    condition:'상', location:'서울 마포구', views:342, likes:28, image:'👟',
+    aiPrice:105000, aiRise:18, aiRecommend:'buy', aiConfidence:83, aiUndervalued:15,
+    aiTrend:'up', aiRisk:2, aiSellWindow:'즉시~1개월', aiRiseProb:72,
+    aiReason:'한정판 희소성 증가. 수요 > 공급 상태 지속 예상. 즉시 매수 기회.',
+    aiSellAdvice:'지금 구매 후 1~2개월 보유 권장. 시즌 상승 사이클 진입.',
+    aiBuyAdvice:'현재 가격이 시장 평균보다 15% 낮음. 즉시 구매 추천.',
+    sparkline:[65,68,72,79,85,89], marketAvg:125000,
+    seller:'sneaker_king', sellerScore:4.8, sellerSales:127,
+    tags:['한정판','나이키','운동화'], desc:'2019년 구매, 3회 착용. 박스·영수증 있음. 사이즈 270.'
+  },
+  {
+    id:2, cat:'전자기기', title:'아이패드 프로 12.9 M2 256GB', price:980000, originalPrice:1690000,
+    condition:'상', location:'서울 강남구', views:891, likes:67, image:'📱',
+    aiPrice:1050000, aiRise:7, aiRecommend:'buy', aiConfidence:79, aiUndervalued:7,
+    aiTrend:'stable', aiRisk:1, aiSellWindow:'1~3개월', aiRiseProb:61,
+    aiReason:'M3 출시로 하락 예상되나 현재 가격은 저점 수준. 단기 보유 후 매도 유리.',
+    aiSellAdvice:'3개월 내 M3 출시 영향으로 추가 하락 전 매도 권장.',
+    aiBuyAdvice:'현재 저점. 단기 사용 후 재판매 전략 유효. 시장 평균 대비 7% 저렴.',
+    sparkline:[110,108,105,102,100,98], marketAvg:1100000,
+    seller:'apple_lover', sellerScore:4.9, sellerSales:43,
+    tags:['아이패드','애플','태블릿'], desc:'애플케어+ 2025.12까지. 스크래치 없음. 악세서리 풀셋.'
+  },
+  {
+    id:3, cat:'패션', title:'샤넬 클래식 플랩백 미디움', price:7800000, originalPrice:9200000,
+    condition:'중상', location:'서울 청담동', views:1204, likes:156, image:'👜',
+    aiPrice:8500000, aiRise:9, aiRecommend:'buy', aiConfidence:91, aiUndervalued:9,
+    aiTrend:'up', aiRisk:1, aiSellWindow:'즉시~2주', aiRiseProb:86,
+    aiReason:'명품 가방 수요 증가 추세. 공급 희소. 즉시 매수 권장. 고신뢰도 기회.',
+    aiSellAdvice:'지금 매수 후 6개월 이상 보유 시 15~20% 추가 상승 예상.',
+    aiBuyAdvice:'명품 특성상 시간이 지날수록 가치 상승. 즉시 구매가 최선.',
+    sparkline:[70,73,77,80,84,88], marketAvg:9200000,
+    seller:'luxury_re', sellerScore:5.0, sellerSales:289,
+    tags:['샤넬','명품백','플랩백'], desc:'시즌2 구매. 카드·더스트백 포함. 사용감 거의 없음.'
+  },
+  {
+    id:4, cat:'전자기기', title:'소니 WH-1000XM5 노이즈캔슬링', price:185000, originalPrice:399000,
+    condition:'상', location:'경기 분당구', views:234, likes:19, image:'🎧',
+    aiPrice:175000, aiRise:-5, aiRecommend:'wait', aiConfidence:65, aiUndervalued:0,
+    aiTrend:'down', aiRisk:3, aiSellWindow:'관망 권장', aiRiseProb:28,
+    aiReason:'XM6 출시 루머로 가격 하락 압력. 1~2개월 후 추가 하락 예상.',
+    aiSellAdvice:'비수기 진입. 1~2개월 관망 후 재평가 필요.',
+    aiBuyAdvice:'가격 하락 추세. 관망 후 저점 확인 후 매수 권장.',
+    sparkline:[22,21,20,19,19,18.5], marketAvg:195000,
+    seller:'audio_pro', sellerScore:4.7, sellerSales:56,
+    tags:['소니','헤드폰','노캔'], desc:'1년 사용. 충전 케이블·파우치 있음. 배터리 정상.'
+  },
+  {
+    id:5, cat:'가구', title:'허먼밀러 에어론 B사이즈 풀옵션', price:680000, originalPrice:1980000,
+    condition:'중상', location:'서울 용산구', views:567, likes:44, image:'🪑',
+    aiPrice:780000, aiRise:15, aiRecommend:'buy', aiConfidence:88, aiUndervalued:15,
+    aiTrend:'up', aiRisk:1, aiSellWindow:'즉시~2주', aiRiseProb:78,
+    aiReason:'재택근무 수요 증가. 이 가격은 시세 대비 15% 저렴. 즉시 매수 강력 권장.',
+    aiSellAdvice:'수요 증가 중. 즉시 구매 후 2~3개월 대기 시 15% 이상 상승 기대.',
+    aiBuyAdvice:'시장 평균 대비 15% 저렴. 공급 감소 추세. 지금이 최적 매수 타이밍.',
+    sparkline:[55,58,60,64,68,72], marketAvg:820000,
+    seller:'office_re', sellerScore:4.6, sellerSales:31,
+    tags:['허먼밀러','에어론','의자'], desc:'2022년 구매. 높이조절·틸트 정상. 패브릭 교체함.'
+  },
+  {
+    id:6, cat:'전자기기', title:'캐논 EOS R5 바디', price:3200000, originalPrice:4500000,
+    condition:'상', location:'서울 홍대', views:423, likes:38, image:'📷',
+    aiPrice:3400000, aiRise:6, aiRecommend:'buy', aiConfidence:76, aiUndervalued:6,
+    aiTrend:'stable', aiRisk:2, aiSellWindow:'1개월 이내', aiRiseProb:58,
+    aiReason:'전문가 수요 꾸준. 중고 희소성 높음. 가격 유지 예상. 중기 보유 전략 유효.',
+    aiSellAdvice:'R6 후속 발표 전 매도 고려. 현재 가격은 안정적.',
+    aiBuyAdvice:'중고 카메라 수요 꾸준. 현재 적정가 수준. 즉시 구매 가능.',
+    sparkline:[33,33,34,34,33,32], marketAvg:3600000,
+    seller:'photo_studio', sellerScore:4.8, sellerSales:72,
+    tags:['캐논','미러리스','카메라'], desc:'셔터수 12,000회. 배터리 2개. 스트랩 포함.'
+  },
+  {
+    id:7, cat:'스포츠', title:'노스페이스 눕시 패딩 XL', price:95000, originalPrice:289000,
+    condition:'중', location:'인천 부평', views:178, likes:12, image:'🧥',
+    aiPrice:88000, aiRise:-7, aiRecommend:'sell', aiConfidence:72, aiUndervalued:0,
+    aiTrend:'down', aiRisk:4, aiSellWindow:'즉시 매도 권장', aiRiseProb:18,
+    aiReason:'비시즌 진입. 봄 시즌까지 가격 20~30% 추가 하락 예상. 즉시 매도 권장.',
+    aiSellAdvice:'즉시 매도가 최선. 봄 시즌 진입 시 20~30% 추가 하락 불가피.',
+    aiBuyAdvice:'비시즌 고점 매수 위험. 관망 후 봄 저점에서 매수 권장.',
+    sparkline:[12,11.5,11,10.5,10,9.5], marketAvg:85000,
+    seller:'outdoor_life', sellerScore:4.3, sellerSales:18,
+    tags:['노스페이스','눕시','패딩'], desc:'2021년 구매. 오리털 세탁 완료. 지퍼 정상.'
+  },
+  {
+    id:8, cat:'수집품', title:'레고 스타워즈 밀레니엄 팔콘 75257', price:420000, originalPrice:329000,
+    condition:'미개봉', location:'부산 해운대', views:689, likes:91, image:'🚀',
+    aiPrice:510000, aiRise:21, aiRecommend:'buy', aiConfidence:94, aiUndervalued:21,
+    aiTrend:'up', aiRisk:1, aiSellWindow:'즉시~1주', aiRiseProb:91,
+    aiReason:'단종 임박 루머. 수집가 수요 급증. 향후 60% 상승 가능성. 최고 신뢰도 기회.',
+    aiSellAdvice:'즉시 매수 후 6~12개월 보유 시 60% 이상 수익 기대. 전략적 보유 권장.',
+    aiBuyAdvice:'미개봉 + 단종 희소성 = 최상의 투자 기회. 즉시 매수 강력 권장.',
+    sparkline:[30,34,37,40,43,47], marketAvg:480000,
+    seller:'brick_master', sellerScore:4.9, sellerSales:204,
+    tags:['레고','스타워즈','한정판'], desc:'미개봉 NEW. 박스 상태 A+. 직거래 우선.'
+  },
+];
+
+const CATEGORIES = ['전체','패션','전자기기','가구','스포츠','수집품'];
+
+/* ===== AI PREDICTION ENGINE ===== */
+const DEF_PARAMS = { trendImpact:0, demandLevel:3, supplyLevel:3, conditionLevel:3, timing:1 };
+
+const calcPrice = (base, p) => {
+  const tMul  = 1 + p.trendImpact * 0.04;
+  const dMul  = 0.8 + (p.demandLevel - 1) * 0.1;
+  const sMul  = 1.2 - (p.supplyLevel - 1) * 0.1;
+  const cMul  = 0.7 + (p.conditionLevel - 1) * 0.1;
+  const tiMul = [0.85, 1.0, 1.12][p.timing - 1];
+  return Math.round(base * tMul * dMul * sMul * cMul * tiMul / 1000) * 1000;
+};
+
+const parseNLP = (text, cur) => {
+  const p = { ...cur };
+  if (/트렌드.*(높|강|핫|인기)/.test(text))  p.trendImpact = Math.min(5, p.trendImpact + 2);
+  if (/트렌드.*(낮|약|식|인기없)/.test(text)) p.trendImpact = Math.max(-5, p.trendImpact - 2);
+  if (/수요.*(많|높|강|증가)/.test(text))     p.demandLevel = Math.min(5, p.demandLevel + 1);
+  if (/수요.*(적|낮|약|감소)/.test(text))     p.demandLevel = Math.max(1, p.demandLevel - 1);
+  if (/공급.*(많|높|풍부)/.test(text))        p.supplyLevel = Math.min(5, p.supplyLevel + 1);
+  if (/공급.*(적|부족|희소)/.test(text))      p.supplyLevel = Math.max(1, p.supplyLevel - 1);
+  if (/(새것|미사용|A급|최상)/.test(text))    p.conditionLevel = 5;
+  if (/(상태좋|B급|양호)/.test(text))         p.conditionLevel = 4;
+  if (/(보통|C급|일반)/.test(text))           p.conditionLevel = 3;
+  if (/(상태나쁨|D급|흠집)/.test(text))       p.conditionLevel = 2;
+  if (/(지금|즉시|바로)/.test(text))          p.timing = 1;
+  if (/(한달|1개월|중기)/.test(text))         p.timing = 2;
+  if (/(장기|3개월|여유)/.test(text))         p.timing = 3;
+  return p;
+};
+
+/* ===== HELPERS ===== */
+const fmt      = n => n ? n.toLocaleString('ko-KR') + '원' : '-';
+const fmtShort = n => n >= 10000 ? (n/10000).toFixed(1).replace(/\.0$/,'') + '만' : n.toLocaleString();
+const fmtPct   = (a,b) => b ? `${a>b?'+':''}${Math.round((a-b)/b*100)}%` : '-';
+
+/* ===== SPARKLINE ===== */
+const Sparkline = ({ data, width=80, height=28 }) => {
+  if (!data || data.length < 2) return null;
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const pts = data.map((v,i) => `${(i/(data.length-1))*width},${height-((v-min)/range)*height*0.85-height*0.05}`).join(' ');
+  const rising = data[data.length-1] >= data[0];
+  const c = rising ? C.green : C.red;
+  const uid = `sg${data[0]}${width}`;
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{display:'block'}}>
+      <defs>
+        <linearGradient id={uid} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={c} stopOpacity="0.25"/>
+          <stop offset="100%" stopColor={c} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      <polyline points={pts} fill="none" stroke={c} strokeWidth="2" strokeLinejoin="round"/>
+    </svg>
+  );
+};
+
+/* ===== BADGES ===== */
+const RecoBadge = ({ r, size='sm' }) => {
+  const cfg = {
+    buy:  { label:'매수 추천', bg:'rgba(16,185,129,0.15)',  color:C.green,  border:`1px solid rgba(16,185,129,0.3)` },
+    sell: { label:'매도 추천', bg:'rgba(239,68,68,0.15)',   color:C.red,    border:`1px solid rgba(239,68,68,0.3)` },
+    wait: { label:'관망 추천', bg:'rgba(245,158,11,0.15)',  color:C.yellow, border:`1px solid rgba(245,158,11,0.3)` },
+  };
+  const s = cfg[r] || cfg.wait;
+  const fs = size==='lg' ? 13 : 11;
+  const px = size==='lg' ? 10 : 7;
+  const py = size==='lg' ? 5  : 3;
+  return <span style={{background:s.bg,color:s.color,border:s.border,borderRadius:20,fontSize:fs,fontWeight:700,padding:`${py}px ${px}px`,whiteSpace:'nowrap'}}>{s.label}</span>;
+};
+
+const RiskBadge = ({ r }) => {
+  const colors = ['',C.green,C.green,C.yellow,C.orange,C.red];
+  return <span style={{color:colors[r]||C.yellow,fontSize:11,fontWeight:600}}>{'●'.repeat(r)}{'○'.repeat(5-r)} 리스크{r}</span>;
+};
+
+/* ===== PRODUCT CARD ===== */
+const ProductCard = ({ p, onClick }) => {
+  const [liked, setLiked] = useState(false);
+  return (
+    <div onClick={onClick} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,overflow:'hidden',cursor:'pointer',transition:'transform .18s,box-shadow .18s'}}
+      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow=`0 8px 32px rgba(139,92,246,0.22)`}}
+      onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=''}}>
+      {/* Image */}
+      <div style={{background:C.card2,height:130,display:'flex',alignItems:'center',justifyContent:'center',fontSize:50,position:'relative'}}>
+        {p.image}
+        {p.aiUndervalued > 0 && (
+          <div style={{position:'absolute',top:8,left:8,background:C.gGreen,color:'#fff',fontSize:10,fontWeight:700,padding:'2px 7px',borderRadius:20}}>
+            💎 -{p.aiUndervalued}%
+          </div>
+        )}
+        <button onClick={e=>{e.stopPropagation();setLiked(!liked)}} style={{position:'absolute',top:6,right:6,background:'rgba(0,0,0,0.45)',border:'none',borderRadius:20,padding:'5px 6px',cursor:'pointer'}}>
+          <IHeart size={13} color={liked?C.red:'rgba(255,255,255,0.7)'} fill={liked?C.red:'none'}/>
+        </button>
+      </div>
+      {/* Content */}
+      <div style={{padding:'10px 12px 12px'}}>
+        <div style={{fontSize:10,color:C.purple,marginBottom:3}}>{p.cat}</div>
+        <div style={{fontSize:13,fontWeight:600,color:C.t1,marginBottom:5,lineHeight:1.3,height:34,overflow:'hidden'}}>{p.title}</div>
+        <div style={{display:'flex',alignItems:'center',gap:5,marginBottom:8}}>
+          <span style={{fontSize:16,fontWeight:800,color:C.t1}}>{fmtShort(p.price)}원</span>
+          {p.aiTrend==='up'   && <ITrendUp size={12} color={C.green}/>}
+          {p.aiTrend==='down' && <ITrendDn size={12} color={C.red}/>}
+        </div>
+        {/* AI band */}
+        <div style={{background:C.gCard,border:`1px solid ${C.border}`,borderRadius:10,padding:'8px 10px'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:5}}>
+            <span style={{fontSize:10,color:C.purpleL,fontWeight:600}}>🤖 AI 분석</span>
+            <RecoBadge r={p.aiRecommend}/>
+          </div>
+          <div style={{display:'flex',alignItems:'flex-end',gap:6}}>
+            <div>
+              <div style={{fontSize:9,color:C.t3}}>AI 적정가</div>
+              <div style={{fontSize:13,fontWeight:700,color:p.aiRise>0?C.green:C.red}}>{fmtShort(p.aiPrice)}원</div>
+              <div style={{fontSize:9,color:p.aiRise>0?C.green:C.red}}>{p.aiRise>0?'+':''}{p.aiRise}% 예상</div>
+            </div>
+            <div style={{flex:1}}/>
+            <Sparkline data={p.sparkline}/>
+          </div>
+          <div style={{marginTop:5,fontSize:9,color:C.t3}}>상승확률 {p.aiRiseProb}% · 신뢰도 {p.aiConfidence}%</div>
+        </div>
+        {/* Meta */}
+        <div style={{display:'flex',gap:8,marginTop:8}}>
+          <span style={{fontSize:10,color:C.t3,display:'flex',alignItems:'center',gap:2}}><IEye size={10}/>{p.views}</span>
+          <span style={{fontSize:10,color:C.t3,display:'flex',alignItems:'center',gap:2}}><IHeart size={10}/>{p.likes}</span>
+          <span style={{fontSize:10,color:C.t3,marginLeft:'auto'}}>{p.location.split(' ')[0]}</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ===== AI CHATBOT ===== */
+const AIChatbot = ({ product }) => {
+  const [msgs, setMsgs] = useState([{
+    role:'ai',
+    text: product
+      ? `🤖 **${product.title}** 분석 모드\n\n현재가 ${fmt(product.price)} → AI 적정가 **${fmt(product.aiPrice)}**\n상승 확률 ${product.aiRiseProb}% · 신뢰도 ${product.aiConfidence}%\n\n시장 상황을 자연어로 입력해주세요!\n예: "수요가 많고 공급이 부족해"`
+      : '🤖 AI 가격 예측 챗봇입니다.\n분석할 상품을 선택하거나 시장 상황을 입력해보세요!'
+  }]);
+  const [input, setInput] = useState('');
+  const [params, setParams] = useState(DEF_PARAMS);
+  const [loading, setLoading] = useState(false);
+  const endRef = useRef(null);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [msgs]);
+
+  const send = () => {
+    const txt = input.trim();
+    if (!txt) return;
+    setInput('');
+    setMsgs(m => [...m, { role:'user', text:txt }]);
+    setLoading(true);
+    setTimeout(() => {
+      const newP = parseNLP(txt, params);
+      setParams(newP);
+      const base = product ? product.price : 100000;
+      const pred = calcPrice(base, newP);
+      const diff = pred - base;
+      const sign = diff >= 0 ? '+' : '';
+      let reply = `**파라미터 업데이트** ✅\n수요 ${newP.demandLevel}/5 · 공급 ${newP.supplyLevel}/5 · 상태 ${newP.conditionLevel}/5 · 트렌드 ${newP.trendImpact>0?'+':''}${newP.trendImpact}\n\n💰 예측가: **${fmt(pred)}**\n변동: ${sign}${fmt(Math.abs(diff))} (${sign}${((diff/base)*100).toFixed(1)}%)\n\n`;
+      if (newP.demandLevel >= 4 && newP.supplyLevel <= 2) {
+        reply += '🔥 수요↑ 공급↓ — **강력 매수 시그널**';
+      } else if (newP.demandLevel <= 2 || newP.supplyLevel >= 4) {
+        reply += '📉 수요 약세 또는 과공급 — **가격 하락 경고**';
+      } else if (newP.trendImpact >= 3) {
+        reply += '📈 트렌드 강세 — **가격 상승 가능성 높음**';
+      } else {
+        reply += '⚖️ 시장 균형 — **현재 가격이 적정 수준**';
+      }
+      setMsgs(m => [...m, { role:'ai', text:reply }]);
+      setLoading(false);
+    }, 900);
+  };
+
+  const renderText = t => t.split('\n').map((line,i) => (
+    <div key={i} style={{marginBottom:line?2:6}}>
+      {line.split(/(\*\*[^*]+\*\*)/g).map((seg,j) =>
+        seg.startsWith('**') ? <strong key={j} style={{color:C.purpleXL}}>{seg.slice(2,-2)}</strong> : seg
+      )}
+    </div>
+  ));
+
+  const sugg = ['수요가 많고 공급이 부족해','상태는 새것 수준이야','지금 즉시 팔고싶어','트렌드가 낮아지는 중','3개월 장기 보유 예정'];
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',height:'100%'}}>
+      <div style={{flex:1,overflowY:'auto',padding:'14px',display:'flex',flexDirection:'column',gap:10}}>
+        {msgs.map((m,i) => (
+          <div key={i} style={{display:'flex',justifyContent:m.role==='user'?'flex-end':'flex-start',gap:8}}>
+            {m.role==='ai' && <div style={{width:26,height:26,borderRadius:'50%',background:C.gPurple,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12,flexShrink:0,marginTop:2}}>🤖</div>}
+            <div style={{maxWidth:'80%',background:m.role==='user'?C.gPurple:C.card2,border:m.role==='ai'?`1px solid ${C.border}`:'none',color:C.t1,borderRadius:m.role==='user'?'14px 14px 4px 14px':'14px 14px 14px 4px',padding:'9px 13px',fontSize:13,lineHeight:1.55}}>
+              {renderText(m.text)}
+            </div>
+          </div>
+        ))}
+        {loading && (
+          <div style={{display:'flex',gap:8}}>
+            <div style={{width:26,height:26,borderRadius:'50%',background:C.gPurple,display:'flex',alignItems:'center',justifyContent:'center',fontSize:12}}>🤖</div>
+            <div style={{background:C.card2,border:`1px solid ${C.border}`,borderRadius:'14px 14px 14px 4px',padding:'10px 14px',display:'flex',gap:4}}>
+              {[0,1,2].map(i=><div key={i} className="dot-pulse" style={{width:6,height:6,borderRadius:'50%',background:C.purple,animationDelay:`${i*0.2}s`}}/>)}
+            </div>
+          </div>
+        )}
+        <div ref={endRef}/>
+      </div>
+      <div style={{padding:'0 12px 6px',display:'flex',gap:6,overflowX:'auto',scrollbarWidth:'none'}}>
+        {sugg.map((s,i) => <button key={i} onClick={()=>setInput(s)} style={{background:C.card2,border:`1px solid ${C.border}`,color:C.purpleL,borderRadius:14,padding:'4px 10px',fontSize:11,cursor:'pointer',whiteSpace:'nowrap',flexShrink:0}}>{s}</button>)}
+      </div>
+      <div style={{padding:'6px 12px 14px',display:'flex',gap:8}}>
+        <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="자연어로 시장 상황을 입력하세요..."
+          style={{flex:1,background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,padding:'10px 13px',color:C.t1,fontSize:13,outline:'none'}}/>
+        <button onClick={send} style={{background:C.gPurple,border:'none',borderRadius:10,padding:'10px 12px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <ISend size={15} color="#fff"/>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ===== BUY/SELL TIMING ADVISOR ===== */
+const TimingAdvisor = ({ p }) => {
+  const [mode, setMode] = useState('buy');
+  const isBuy = mode === 'buy';
+  const isPosReco = p.aiRecommend === 'buy';
+  const advice = isBuy ? p.aiBuyAdvice : p.aiSellAdvice;
+  const reco = isBuy ? (p.aiRecommend === 'buy' ? '지금 구매' : p.aiRecommend === 'sell' ? '매수 비권장' : '관망 후 구매')
+                     : (p.aiRecommend === 'sell' ? '즉시 매도' : p.aiRecommend === 'buy' ? '매도 보류' : '타이밍 대기');
+  const recoColor = isBuy
+    ? (p.aiRecommend === 'buy' ? C.green : p.aiRecommend === 'sell' ? C.red : C.yellow)
+    : (p.aiRecommend === 'sell' ? C.red : p.aiRecommend === 'buy' ? C.green : C.yellow);
+
+  return (
+    <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:'16px',marginBottom:14}}>
+      <div style={{display:'flex',gap:6,marginBottom:14,background:C.card2,borderRadius:10,padding:4}}>
+        {[['buy','구매 타이밍'],['sell','판매 타이밍']].map(([v,l])=>(
+          <button key={v} onClick={()=>setMode(v)} style={{flex:1,background:mode===v?C.gPurple:'transparent',border:'none',borderRadius:8,padding:'8px',color:mode===v?'#fff':C.t2,fontSize:13,fontWeight:mode===v?700:400,cursor:'pointer',transition:'all .2s'}}>
+            {l}
+          </button>
+        ))}
+      </div>
+
+      <div style={{display:'flex',gap:10,marginBottom:12}}>
+        <div style={{flex:1,background:C.card2,borderRadius:12,padding:'12px',textAlign:'center'}}>
+          <div style={{fontSize:10,color:C.t3,marginBottom:4}}>{isBuy?'현재 시장가':'내 상품 가격'}</div>
+          <div style={{fontSize:18,fontWeight:800,color:C.t1}}>{fmtShort(p.price)}원</div>
+        </div>
+        <div style={{flex:1,background:`${recoColor}18`,border:`1px solid ${recoColor}44`,borderRadius:12,padding:'12px',textAlign:'center'}}>
+          <div style={{fontSize:10,color:C.t3,marginBottom:4}}>AI 추천</div>
+          <div style={{fontSize:14,fontWeight:800,color:recoColor}}>{reco}</div>
+        </div>
+      </div>
+
+      <div style={{background:C.card2,borderRadius:12,padding:'12px',marginBottom:10}}>
+        <div style={{fontSize:10,color:C.purpleL,fontWeight:600,marginBottom:6}}>{isBuy?'📊 구매 타이밍 분석':'📊 판매 타이밍 분석'}</div>
+
+        {isBuy ? (
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+              <span style={{color:C.t3}}>시장 평균 대비</span>
+              <span style={{color:p.price<p.marketAvg?C.green:C.red,fontWeight:700}}>{fmtPct(p.price,p.marketAvg)}</span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+              <span style={{color:C.t3}}>상승 확률</span>
+              <span style={{color:C.purple,fontWeight:700}}>{p.aiRiseProb}%</span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+              <span style={{color:C.t3}}>저평가 여부</span>
+              <span style={{color:p.aiUndervalued>0?C.green:C.t2,fontWeight:700}}>{p.aiUndervalued>0?`${p.aiUndervalued}% 저평가`:'적정가 수준'}</span>
+            </div>
+          </div>
+        ) : (
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+              <span style={{color:C.t3}}>AI 적정가 대비</span>
+              <span style={{color:p.price<p.aiPrice?C.red:C.green,fontWeight:700}}>{fmtPct(p.price,p.aiPrice)}</span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+              <span style={{color:C.t3}}>가격 추세</span>
+              <span style={{color:p.aiTrend==='up'?C.green:p.aiTrend==='down'?C.red:C.yellow,fontWeight:700}}>
+                {p.aiTrend==='up'?'상승 중 📈':p.aiTrend==='down'?'하락 중 📉':'횡보 중 ➡️'}
+              </span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:12}}>
+              <span style={{color:C.t3}}>최적 판매 시점</span>
+              <span style={{color:C.cyan,fontWeight:700}}>{p.aiSellWindow}</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div style={{background:`${recoColor}12`,border:`1px solid ${recoColor}33`,borderRadius:12,padding:'12px'}}>
+        <div style={{fontSize:11,color:recoColor,fontWeight:700,marginBottom:4}}>{isBuy?'💡 구매 전략':'💡 판매 전략'}</div>
+        <div style={{fontSize:12,color:C.t2,lineHeight:1.6}}>{advice}</div>
+      </div>
+    </div>
+  );
+};
+
+/* ===== MARKET PAGE ===== */
+const MarketPage = ({ onProduct }) => {
+  const [cat, setCat] = useState('전체');
+  const [search, setSearch] = useState('');
+  const [sort, setSort] = useState('ai');
+
+  const filtered = PRODUCTS
+    .filter(p => (cat==='전체'||p.cat===cat) && (p.title.includes(search)||p.tags.some(t=>t.includes(search))))
+    .sort((a,b) => sort==='ai' ? b.aiConfidence-a.aiConfidence : sort==='price' ? a.price-b.price : b.views-a.views);
+
+  const undervalued = PRODUCTS.filter(p=>p.aiUndervalued>8).sort((a,b)=>b.aiUndervalued-a.aiUndervalued);
+  const rising = PRODUCTS.filter(p=>p.aiTrend==='up').sort((a,b)=>b.aiRise-a.aiRise);
+  const opportunity = PRODUCTS.filter(p=>p.aiRecommend==='buy'&&p.aiConfidence>=80);
+  const temp = 72;
+
+  return (
+    <div style={{paddingBottom:80}}>
+      {/* Hero */}
+      <div style={{background:C.gHero,padding:'22px 16px 18px'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+          <div>
+            <div style={{fontSize:10,color:C.purpleXL,marginBottom:3,letterSpacing:1}}>AI MARKET INTELLIGENCE</div>
+            <div style={{fontSize:21,fontWeight:800,color:'#fff'}}>시장 인사이트 📊</div>
+          </div>
+          <div style={{textAlign:'right',background:'rgba(255,255,255,0.08)',borderRadius:10,padding:'8px 12px'}}>
+            <div style={{fontSize:9,color:C.purpleXL}}>AI 업데이트</div>
+            <div style={{fontSize:11,color:'#fff',fontWeight:600}}>방금 전</div>
+          </div>
+        </div>
+        <div style={{position:'relative'}}>
+          <ISearch size={15} color="rgba(255,255,255,0.4)" style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)'}}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="상품 검색..."
+            style={{width:'100%',background:'rgba(255,255,255,0.1)',border:`1px solid rgba(255,255,255,0.15)`,borderRadius:11,padding:'10px 13px 10px 38px',color:'#fff',fontSize:13,outline:'none'}}/>
+        </div>
+      </div>
+
+      <div style={{padding:'14px 14px 0'}}>
+        {/* Market Temp */}
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:'14px',marginBottom:14}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
+            <div style={{display:'flex',alignItems:'center',gap:7}}>
+              <IFire size={16} color={C.orange}/>
+              <span style={{fontSize:13,fontWeight:700,color:C.t1}}>시장 온도계</span>
+            </div>
+            <span style={{fontSize:11,color:C.orange,fontWeight:600,background:'rgba(249,115,22,0.12)',borderRadius:20,padding:'3px 10px'}}>과열 주의 {temp}°</span>
+          </div>
+          <div style={{background:C.card2,borderRadius:8,height:8,overflow:'hidden',marginBottom:6}}>
+            <div style={{width:`${temp}%`,height:'100%',background:`linear-gradient(90deg,${C.cyan},${C.orange})`,borderRadius:8}}/>
+          </div>
+          <div style={{display:'flex',justifyContent:'space-between',fontSize:10,color:C.t3,marginBottom:12}}>
+            <span>냉각 (매수 기회)</span><span>과열 (매도 타이밍)</span>
+          </div>
+          <div style={{display:'flex',gap:8}}>
+            {[
+              {label:'저평가',val:`${undervalued.length}개`,icon:'💎',c:C.green},
+              {label:'상승추세',val:`${rising.length}개`,icon:'📈',c:C.cyan},
+              {label:'매수기회',val:`${opportunity.length}개`,icon:'⚡',c:C.purple},
+            ].map((s,i)=>(
+              <div key={i} style={{flex:1,background:C.card2,borderRadius:10,padding:'9px 6px',textAlign:'center'}}>
+                <div style={{fontSize:16}}>{s.icon}</div>
+                <div style={{fontSize:15,fontWeight:800,color:s.c}}>{s.val}</div>
+                <div style={{fontSize:9,color:C.t3}}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 저평가 스팟라이트 — CORE FEATURE */}
+        {undervalued.length > 0 && (
+          <div style={{marginBottom:18}}>
+            <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
+              <IDiamond size={15} color={C.cyan}/>
+              <span style={{fontSize:14,fontWeight:800,color:C.t1}}>저평가 상품 발견</span>
+              <span style={{background:`${C.cyan}22`,color:C.cyan,border:`1px solid ${C.cyan}44`,borderRadius:20,fontSize:10,fontWeight:700,padding:'2px 8px'}}>AI 핵심 기능</span>
+            </div>
+            <div style={{display:'flex',gap:10,overflowX:'auto',scrollbarWidth:'none',paddingBottom:4}}>
+              {undervalued.map(p=>(
+                <div key={p.id} onClick={()=>onProduct(p)} style={{minWidth:185,background:C.card,border:`2px solid ${C.cyan}44`,borderRadius:14,padding:'13px',cursor:'pointer',flexShrink:0,transition:'transform .18s'}}
+                  onMouseEnter={e=>e.currentTarget.style.transform='translateY(-2px)'}
+                  onMouseLeave={e=>e.currentTarget.style.transform=''}>
+                  <div style={{fontSize:30,marginBottom:7,textAlign:'center'}}>{p.image}</div>
+                  <div style={{fontSize:12,fontWeight:600,color:C.t1,marginBottom:5,lineHeight:1.3}}>{p.title.length>18?p.title.slice(0,18)+'…':p.title}</div>
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:7}}>
+                    <span style={{fontSize:14,fontWeight:800,color:C.t1}}>{fmtShort(p.price)}원</span>
+                    <span style={{background:'rgba(16,185,129,0.15)',color:C.green,border:`1px solid rgba(16,185,129,0.3)`,borderRadius:20,fontSize:11,fontWeight:700,padding:'2px 8px'}}>-{p.aiUndervalued}%</span>
+                  </div>
+                  <div style={{fontSize:10,color:C.t3,marginBottom:5}}>💡 시장 평균 {fmtShort(p.marketAvg)}원</div>
+                  <div style={{background:`${C.green}18`,borderRadius:8,padding:'6px 8px'}}>
+                    <div style={{fontSize:10,fontWeight:700,color:C.green}}>🔥 추천: 지금 구매</div>
+                    <div style={{fontSize:9,color:C.t3,marginTop:2}}>상승 가능성 {p.aiRiseProb}%</div>
+                  </div>
+                  <Sparkline data={p.sparkline} width={161} height={26}/>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 가격 상승 TOP */}
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:'14px',marginBottom:18}}>
+          <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}>
+            <ITrendUp size={15} color={C.green}/>
+            <span style={{fontSize:14,fontWeight:700,color:C.t1}}>가격 상승 TOP</span>
+          </div>
+          {rising.slice(0,3).map((p,i)=>(
+            <div key={p.id} onClick={()=>onProduct(p)} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 0',borderBottom:i<2?`1px solid ${C.border2}`:'none',cursor:'pointer'}}>
+              <div style={{width:26,height:26,borderRadius:'50%',background:[C.gPurple,C.gCyan,C.gGreen][i],display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,fontWeight:800,color:'#fff',flexShrink:0}}>{i+1}</div>
+              <div style={{fontSize:20,flexShrink:0}}>{p.image}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:12,fontWeight:600,color:C.t1}}>{p.title.length>16?p.title.slice(0,16)+'…':p.title}</div>
+                <div style={{fontSize:10,color:C.t3}}>{fmt(p.price)}</div>
+              </div>
+              <div style={{textAlign:'right'}}>
+                <div style={{fontSize:13,fontWeight:700,color:C.green}}>+{p.aiRise}%</div>
+                <Sparkline data={p.sparkline} width={44} height={18}/>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 거래 기회 */}
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,padding:'14px',marginBottom:18}}>
+          <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:12}}>
+            <IZap size={15} color={C.yellow}/>
+            <span style={{fontSize:14,fontWeight:700,color:C.t1}}>지금 거래 기회</span>
+          </div>
+          <div style={{display:'flex',gap:8,overflowX:'auto',scrollbarWidth:'none'}}>
+            {opportunity.slice(0,4).map(p=>(
+              <div key={p.id} onClick={()=>onProduct(p)} style={{flexShrink:0,background:C.card2,border:`1px solid ${C.border}`,borderRadius:12,padding:'10px 12px',cursor:'pointer',minWidth:130,textAlign:'center'}}>
+                <div style={{fontSize:24,marginBottom:6}}>{p.image}</div>
+                <div style={{fontSize:11,color:C.t1,fontWeight:600,marginBottom:4}}>{p.title.slice(0,10)}…</div>
+                <div style={{fontSize:12,color:C.green,fontWeight:700}}>{fmtShort(p.price)}원</div>
+                <div style={{fontSize:9,color:C.t3}}>신뢰도 {p.aiConfidence}%</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Filter */}
+        <div style={{display:'flex',gap:7,overflowX:'auto',scrollbarWidth:'none',marginBottom:10,paddingBottom:2}}>
+          {CATEGORIES.map(c=>(
+            <button key={c} onClick={()=>setCat(c)} style={{flexShrink:0,background:cat===c?C.gPurple:C.card,border:`1px solid ${cat===c?'transparent':C.border}`,color:cat===c?'#fff':C.t2,borderRadius:20,padding:'6px 14px',fontSize:12,cursor:'pointer',fontWeight:cat===c?700:400}}>{c}</button>
+          ))}
+          <select value={sort} onChange={e=>setSort(e.target.value)} style={{marginLeft:'auto',background:C.card,border:`1px solid ${C.border}`,color:C.t2,borderRadius:8,padding:'6px 10px',fontSize:11,cursor:'pointer',flexShrink:0}}>
+            <option value="ai">AI 추천순</option>
+            <option value="price">가격순</option>
+            <option value="views">인기순</option>
+          </select>
+        </div>
+
+        {/* Grid */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,paddingBottom:10}}>
+          {filtered.map(p=><ProductCard key={p.id} p={p} onClick={()=>onProduct(p)}/>)}
+        </div>
+        {filtered.length===0 && <div style={{textAlign:'center',padding:'40px',color:C.t3}}>검색 결과가 없어요 🔍</div>}
+      </div>
+    </div>
+  );
+};
+
+/* ===== AI ANALYSIS PAGE ===== */
+const AIPage = ({ onProduct }) => {
+  const [selected, setSelected] = useState(PRODUCTS[0]);
+  const [scenario, setScenario] = useState('normal');
+  const [tab, setTab] = useState('analysis');
+
+  const scenarios = {
+    optimistic:  { label:'낙관', color:C.green,  mul:1.18, desc:'수요 급증·공급 부족' },
+    normal:      { label:'보통', color:C.purple, mul:1.0,  desc:'현재 시장 유지' },
+    pessimistic: { label:'비관', color:C.red,    mul:0.82, desc:'수요 감소·공급 증가' },
+  };
+  const scenPrice = (p, sc) => Math.round(p.aiPrice * scenarios[sc].mul / 1000) * 1000;
+
+  const strategy = [
+    { icon:'⚡', title:'즉시 매수 기회', color:C.green,  items:PRODUCTS.filter(p=>p.aiRecommend==='buy'&&p.aiConfidence>=80&&p.aiUndervalued>=8) },
+    { icon:'👀', title:'관망 추천',       color:C.yellow, items:PRODUCTS.filter(p=>p.aiRecommend==='wait') },
+    { icon:'🚀', title:'즉시 매도',       color:C.red,    items:PRODUCTS.filter(p=>p.aiRecommend==='sell') },
+  ];
+
+  return (
+    <div style={{paddingBottom:80}}>
+      <div style={{background:C.gHero,padding:'22px 16px 18px'}}>
+        <div style={{fontSize:10,color:C.purpleXL,marginBottom:3,letterSpacing:1}}>PRICE INTELLIGENCE</div>
+        <div style={{fontSize:21,fontWeight:800,color:'#fff'}}>AI 가격 분석 🧠</div>
+        <div style={{fontSize:12,color:'rgba(255,255,255,0.55)',marginTop:3}}>시나리오별 예측 · 챗봇 · 전략</div>
+      </div>
+
+      <div style={{padding:'14px'}}>
+        {/* Tabs */}
+        <div style={{display:'flex',background:C.card,borderRadius:12,padding:3,marginBottom:14,gap:3}}>
+          {[['analysis','📊 분석'],['chatbot','🤖 챗봇'],['strategy','⚡ 전략']].map(([v,l])=>(
+            <button key={v} onClick={()=>setTab(v)} style={{flex:1,background:tab===v?C.gPurple:'transparent',border:'none',color:tab===v?'#fff':C.t2,borderRadius:10,padding:'9px 4px',fontSize:12,fontWeight:tab===v?700:400,cursor:'pointer',transition:'all .2s'}}>
+              {l}
+            </button>
+          ))}
+        </div>
+
+        {tab==='analysis' && (
+          <>
+            {/* Product Selector */}
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:12,color:C.t2,marginBottom:7}}>분석 상품 선택</div>
+              <div style={{display:'flex',gap:8,overflowX:'auto',scrollbarWidth:'none',paddingBottom:3}}>
+                {PRODUCTS.map(p=>(
+                  <button key={p.id} onClick={()=>setSelected(p)} style={{flexShrink:0,background:selected.id===p.id?C.gPurple:C.card,border:`1px solid ${selected.id===p.id?'transparent':C.border}`,borderRadius:11,padding:'7px 12px',cursor:'pointer',display:'flex',alignItems:'center',gap:7}}>
+                    <span style={{fontSize:18}}>{p.image}</span>
+                    <div style={{textAlign:'left'}}>
+                      <div style={{fontSize:11,color:'#fff',fontWeight:600,maxWidth:90,overflow:'hidden',whiteSpace:'nowrap',textOverflow:'ellipsis'}}>{p.title}</div>
+                      <div style={{fontSize:9,color:selected.id===p.id?'rgba(255,255,255,0.6)':C.t3}}>{fmtShort(p.price)}원</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Scenario */}
+            <div style={{display:'flex',gap:7,marginBottom:14}}>
+              {Object.entries(scenarios).map(([k,s])=>(
+                <button key={k} onClick={()=>setScenario(k)} style={{flex:1,background:scenario===k?`${s.color}22`:C.card,border:`2px solid ${scenario===k?s.color:C.border}`,borderRadius:11,padding:'9px 4px',cursor:'pointer',textAlign:'center',transition:'all .18s'}}>
+                  <div style={{fontSize:12,fontWeight:700,color:scenario===k?s.color:C.t2}}>{s.label}</div>
+                  <div style={{fontSize:9,color:C.t3,marginTop:2}}>{s.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {/* Main Analysis */}
+            <div style={{background:C.card,border:`1px solid ${C.border3}`,borderRadius:18,padding:'18px',marginBottom:14}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+                <div style={{fontSize:38}}>{selected.image}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:700,color:C.t1,marginBottom:5}}>{selected.title}</div>
+                  <RecoBadge r={selected.aiRecommend} size="lg"/>
+                </div>
+              </div>
+
+              {/* Price grid */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:8,alignItems:'center',marginBottom:14}}>
+                <div style={{background:C.card2,borderRadius:11,padding:'11px',textAlign:'center'}}>
+                  <div style={{fontSize:9,color:C.t3,marginBottom:3}}>현재 가격</div>
+                  <div style={{fontSize:17,fontWeight:800,color:C.t1}}>{fmtShort(selected.price)}원</div>
+                </div>
+                <div style={{color:scenarios[scenario].color,fontSize:16}}>→</div>
+                <div style={{background:`${scenarios[scenario].color}18`,border:`1px solid ${scenarios[scenario].color}44`,borderRadius:11,padding:'11px',textAlign:'center'}}>
+                  <div style={{fontSize:9,color:C.t3,marginBottom:3}}>{scenarios[scenario].label} 예측가</div>
+                  <div style={{fontSize:17,fontWeight:800,color:scenarios[scenario].color}}>{fmtShort(scenPrice(selected,scenario))}원</div>
+                </div>
+              </div>
+
+              {/* 3-scenario comparison */}
+              <div style={{display:'flex',gap:6,marginBottom:13}}>
+                {Object.entries(scenarios).map(([k,s])=>(
+                  <div key={k} style={{flex:1,background:C.card2,borderRadius:10,padding:'8px 5px',textAlign:'center',border:`1px solid ${scenario===k?s.color+'55':'transparent'}`}}>
+                    <div style={{fontSize:9,color:s.color,fontWeight:600,marginBottom:2}}>{s.label}</div>
+                    <div style={{fontSize:12,fontWeight:700,color:C.t1}}>{fmtShort(scenPrice(selected,k))}원</div>
+                  </div>
+                ))}
+              </div>
+
+              <Sparkline data={selected.sparkline} width={window.innerWidth-76} height={42}/>
+
+              <div style={{background:C.card2,borderRadius:11,padding:'11px',marginTop:12}}>
+                <div style={{fontSize:10,color:C.purpleL,fontWeight:600,marginBottom:5}}>🤖 AI 분석 근거</div>
+                <div style={{fontSize:12,color:C.t2,lineHeight:1.6}}>{selected.aiReason}</div>
+                <div style={{display:'flex',flexWrap:'wrap',gap:10,marginTop:9}}>
+                  <span style={{fontSize:10,color:C.t3}}>신뢰도 <strong style={{color:C.purpleL}}>{selected.aiConfidence}%</strong></span>
+                  <span style={{fontSize:10,color:C.t3}}>타이밍: <strong style={{color:C.cyan}}>{selected.aiSellWindow}</strong></span>
+                  <RiskBadge r={selected.aiRisk}/>
+                </div>
+              </div>
+            </div>
+
+            <TimingAdvisor p={selected}/>
+
+            <button onClick={()=>onProduct(selected)} style={{width:'100%',background:C.gPurple,border:'none',borderRadius:13,padding:'13px',color:'#fff',fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              <ITarget size={17} color="#fff"/> 상세 페이지로
+            </button>
+          </>
+        )}
+
+        {tab==='chatbot' && (
+          <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:16,overflow:'hidden',height:'calc(100vh - 250px)'}}>
+            <div style={{padding:'12px 14px',background:C.card2,borderBottom:`1px solid ${C.border}`,display:'flex',alignItems:'center',gap:9}}>
+              <div style={{width:30,height:30,borderRadius:'50%',background:C.gPurple,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14}}>🤖</div>
+              <div>
+                <div style={{fontSize:13,fontWeight:700,color:C.t1}}>AI 가격 예측 챗봇</div>
+                <div style={{fontSize:10,color:C.green}}>● 온라인 · {selected.title.slice(0,12)}… 분석 중</div>
+              </div>
+            </div>
+            <div style={{height:'calc(100% - 58px)'}}>
+              <AIChatbot product={selected}/>
+            </div>
+          </div>
+        )}
+
+        {tab==='strategy' && (
+          <>
+            <div style={{fontSize:12,color:C.t2,marginBottom:14}}>AI가 분류한 거래 전략 카드</div>
+            {strategy.map((s,i)=>(
+              <div key={i} style={{background:C.card,border:`1px solid ${s.color}22`,borderRadius:14,padding:'14px',marginBottom:10}}>
+                <div style={{display:'flex',alignItems:'center',gap:9,marginBottom:11}}>
+                  <div style={{fontSize:22}}>{s.icon}</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:14,fontWeight:700,color:s.color}}>{s.title}</div>
+                  </div>
+                  <div style={{background:`${s.color}22`,color:s.color,borderRadius:20,padding:'3px 9px',fontSize:12,fontWeight:700}}>{s.items.length}개</div>
+                </div>
+                {s.items.length > 0 ? (
+                  <div style={{display:'flex',gap:8,overflowX:'auto',scrollbarWidth:'none'}}>
+                    {s.items.map(p=>(
+                      <div key={p.id} onClick={()=>onProduct(p)} style={{flexShrink:0,background:C.card2,border:`1px solid ${C.border}`,borderRadius:10,padding:'10px',cursor:'pointer',minWidth:115,textAlign:'center'}}>
+                        <div style={{fontSize:22,marginBottom:5}}>{p.image}</div>
+                        <div style={{fontSize:10,color:C.t1,fontWeight:600,marginBottom:3}}>{p.title.slice(0,10)}…</div>
+                        <div style={{fontSize:12,color:s.color,fontWeight:700}}>{fmtShort(p.price)}원</div>
+                        <div style={{fontSize:9,color:C.t3}}>+{p.aiRise}%</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <div style={{color:C.t3,fontSize:11,textAlign:'center',padding:'8px'}}>해당 상품 없음</div>}
+              </div>
+            ))}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+/* ===== DETAIL PAGE ===== */
+const DetailPage = ({ product:p, onBack }) => {
+  const [liked, setLiked] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+
+  if (showChat) return (
+    <div style={{height:'100vh',display:'flex',flexDirection:'column',background:C.bg}}>
+      <div style={{padding:'14px 16px',background:C.card,borderBottom:`1px solid ${C.border}`,display:'flex',alignItems:'center',gap:10}}>
+        <button onClick={()=>setShowChat(false)} style={{background:'none',border:'none',color:C.t1,cursor:'pointer',fontSize:13}}>← 뒤로</button>
+        <span style={{fontWeight:700,color:C.t1}}>AI 가격 예측 챗봇</span>
+      </div>
+      <div style={{flex:1,overflow:'hidden'}}><AIChatbot product={p}/></div>
+    </div>
+  );
+
+  return (
+    <div style={{paddingBottom:86}}>
+      {/* Sticky header */}
+      <div style={{background:C.card,borderBottom:`1px solid ${C.border}`,padding:'12px 14px',display:'flex',alignItems:'center',gap:10,position:'sticky',top:0,zIndex:10}}>
+        <button onClick={onBack} style={{background:'none',border:'none',color:C.t1,cursor:'pointer',fontSize:14,padding:'4px 6px'}}>←</button>
+        <span style={{fontWeight:700,color:C.t1,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',fontSize:14}}>{p.title}</span>
+        <button onClick={()=>setLiked(!liked)} style={{background:'none',border:'none',cursor:'pointer'}}>
+          <IHeart size={19} color={liked?C.red:C.t2} fill={liked?C.red:'none'}/>
+        </button>
+      </div>
+
+      {/* Image */}
+      <div style={{background:C.card2,height:200,display:'flex',alignItems:'center',justifyContent:'center',fontSize:84}}>
+        {p.image}
+      </div>
+
+      <div style={{padding:'14px'}}>
+        {/* Title + Price */}
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:11,color:C.purple,marginBottom:5}}>{p.cat}</div>
+          <div style={{fontSize:19,fontWeight:800,color:C.t1,marginBottom:7,lineHeight:1.3}}>{p.title}</div>
+          <div style={{display:'flex',alignItems:'baseline',gap:9}}>
+            <span style={{fontSize:24,fontWeight:900,color:C.t1}}>{fmt(p.price)}</span>
+            <span style={{fontSize:13,color:C.t3,textDecoration:'line-through'}}>{fmt(p.originalPrice)}</span>
+            <span style={{fontSize:12,color:C.green,fontWeight:600}}>{Math.round((1-p.price/p.originalPrice)*100)}%↓</span>
+          </div>
+        </div>
+
+        {/* AI HERO PANEL */}
+        <div style={{background:C.gCard,border:`2px solid ${C.border3}`,borderRadius:18,padding:'16px',marginBottom:14}}>
+          <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:13}}>
+            <IBrain size={16} color={C.purpleL}/>
+            <span style={{fontSize:14,fontWeight:700,color:C.purpleXL}}>AI 가격 인텔리전스</span>
+            <span style={{marginLeft:'auto',fontSize:10,color:C.t3}}>신뢰도 {p.aiConfidence}%</span>
+          </div>
+
+          {/* Price trio */}
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:7,marginBottom:13}}>
+            {[
+              {label:'현재가',  val:fmtShort(p.price),     color:C.t1,      border:'none'},
+              {label:'AI 적정가',val:fmtShort(p.aiPrice),   color:C.purpleL, border:`1px solid ${C.purple}44`},
+              {label:'시장평균', val:fmtShort(p.marketAvg), color:C.t2,      border:'none'},
+            ].map((x,i)=>(
+              <div key={i} style={{background:C.card,borderRadius:11,padding:'9px 6px',textAlign:'center',border:x.border}}>
+                <div style={{fontSize:9,color:C.t3,marginBottom:3}}>{x.label}</div>
+                <div style={{fontSize:14,fontWeight:800,color:x.color}}>{x.val}원</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Undervalued highlight */}
+          {p.aiUndervalued > 0 && (
+            <div style={{background:'rgba(16,185,129,0.1)',border:`1px solid rgba(16,185,129,0.3)`,borderRadius:11,padding:'11px',marginBottom:11}}>
+              <div style={{fontSize:12,fontWeight:700,color:C.green,marginBottom:3}}>💡 시장 평균보다 {p.aiUndervalued}% 저평가</div>
+              <div style={{fontSize:11,color:C.t2}}>📈 상승 가능성 {p.aiRiseProb}% · 🔥 추천: {p.aiRecommend==='buy'?'지금 구매':'관망'}</div>
+            </div>
+          )}
+
+          <div style={{display:'flex',alignItems:'center',gap:9,background:C.card,borderRadius:11,padding:'11px',marginBottom:11}}>
+            <RecoBadge r={p.aiRecommend} size="lg"/>
+            <div style={{flex:1,fontSize:11,color:C.t2,lineHeight:1.5}}>{p.aiReason}</div>
+          </div>
+
+          <Sparkline data={p.sparkline} width={window.innerWidth-60} height={44}/>
+
+          <div style={{display:'flex',gap:8,marginTop:11}}>
+            {[
+              {label:'리스크',  val:<RiskBadge r={p.aiRisk}/>},
+              {label:'최적 타이밍', val:<span style={{fontSize:11,fontWeight:700,color:C.cyan}}>{p.aiSellWindow}</span>},
+              {label:'상승 여력',  val:<span style={{fontSize:11,fontWeight:700,color:p.aiRise>0?C.green:C.red}}>{p.aiRise>0?'+':''}{p.aiRise}%</span>},
+            ].map((x,i)=>(
+              <div key={i} style={{flex:1,background:C.card,borderRadius:10,padding:'9px 6px',textAlign:'center'}}>
+                <div style={{fontSize:9,color:C.t3,marginBottom:4}}>{x.label}</div>
+                {x.val}
+              </div>
+            ))}
+          </div>
+
+          <button onClick={()=>setShowChat(true)} style={{width:'100%',marginTop:11,background:'rgba(139,92,246,0.1)',border:`1px solid ${C.purple}`,borderRadius:11,padding:'11px',color:C.purpleXL,fontSize:13,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:7}}>
+            <IMsg size={15} color={C.purpleXL}/> AI와 가격 시나리오 분석하기
+          </button>
+        </div>
+
+        {/* Buy/Sell Advisor */}
+        <TimingAdvisor p={p}/>
+
+        {/* Product Info */}
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:'14px',marginBottom:12}}>
+          <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:11}}>상품 정보</div>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
+            {[['상태',p.condition],['위치',p.location],['조회',`${p.views}회`]].map(([k,v])=>(
+              <div key={k} style={{background:C.card2,borderRadius:7,padding:'5px 9px',fontSize:11}}>
+                <span style={{color:C.t3}}>{k} </span><span style={{color:C.t1,fontWeight:600}}>{v}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:12,color:C.t2,lineHeight:1.65}}>{p.desc}</div>
+          <div style={{display:'flex',gap:5,flexWrap:'wrap',marginTop:10}}>
+            {p.tags.map(t=><span key={t} style={{background:C.card2,border:`1px solid ${C.border}`,color:C.t3,borderRadius:20,fontSize:10,padding:'3px 9px'}}>#{t}</span>)}
+          </div>
+        </div>
+
+        {/* Seller */}
+        <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,padding:'14px'}}>
+          <div style={{display:'flex',alignItems:'center',gap:11}}>
+            <div style={{width:42,height:42,borderRadius:'50%',background:C.gPurple,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>👤</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:C.t1}}>{p.seller}</div>
+              <div style={{fontSize:11,color:C.t3}}>판매 {p.sellerSales}건</div>
+            </div>
+            <div style={{display:'flex',alignItems:'center',gap:4}}>
+              <IStar size={13} color={C.yellow} fill={C.yellow}/>
+              <span style={{fontWeight:700,color:C.t1,fontSize:14}}>{p.sellerScore}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom CTA */}
+      <div style={{position:'fixed',bottom:0,left:0,right:0,background:C.card,borderTop:`1px solid ${C.border}`,padding:'10px 14px 14px',display:'flex',gap:9,zIndex:20}}>
+        <button onClick={()=>setShowChat(true)} style={{flex:1,background:C.card2,border:`1px solid ${C.border}`,borderRadius:11,padding:'13px',color:C.purpleL,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+          🤖 AI 예측
+        </button>
+        <button style={{flex:2,background:C.gPurple,border:'none',borderRadius:11,padding:'13px',color:'#fff',fontSize:14,fontWeight:800,cursor:'pointer'}}>
+          구매하기
+        </button>
+      </div>
+    </div>
+  );
+};
+
+/* ===== SELL PAGE ===== */
+const SellPage = () => {
+  const [form, setForm] = useState({ title:'', price:'', cat:'', desc:'' });
+  const [aiResult, setAiResult] = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+
+  const runAI = () => {
+    if (!form.title) return;
+    setAnalyzing(true);
+    setTimeout(() => {
+      const base = 150000 + Math.random() * 100000;
+      const suggested = Math.round(base / 1000) * 1000;
+      setAiResult({ price:suggested, min:Math.round(suggested*0.78/1000)*1000, max:Math.round(suggested*1.22/1000)*1000, confidence:Math.round(72+Math.random()*22), timing:'즉시~2주', trend:'up', riseProb:Math.round(55+Math.random()*35) });
+      setAnalyzing(false);
+    }, 1500);
+  };
+
+  return (
+    <div style={{padding:'20px 14px 80px'}}>
+      <div style={{fontSize:21,fontWeight:800,color:C.t1,marginBottom:3}}>판매 등록 ✍️</div>
+      <div style={{fontSize:12,color:C.t2,marginBottom:20}}>AI가 최적 가격을 제안해드려요</div>
+
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:15,padding:'15px',marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:13}}>📝 상품 정보</div>
+        {[['title','상품명','나이키 에어맥스 97...'],['price','희망 가격 (원)','89000']].map(([k,label,ph])=>(
+          <div key={k} style={{marginBottom:11}}>
+            <div style={{fontSize:11,color:C.t3,marginBottom:5}}>{label}</div>
+            <input value={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.value}))} placeholder={ph}
+              style={{width:'100%',background:C.card2,border:`1px solid ${C.border}`,borderRadius:9,padding:'9px 11px',color:C.t1,fontSize:13,outline:'none'}}/>
+          </div>
+        ))}
+        <div style={{marginBottom:11}}>
+          <div style={{fontSize:11,color:C.t3,marginBottom:5}}>상품 설명</div>
+          <textarea value={form.desc} onChange={e=>setForm(f=>({...f,desc:e.target.value}))} placeholder="상태, 구매 시기 등..." rows={3}
+            style={{width:'100%',background:C.card2,border:`1px solid ${C.border}`,borderRadius:9,padding:'9px 11px',color:C.t1,fontSize:13,outline:'none',resize:'vertical'}}/>
+        </div>
+        <div style={{display:'flex',gap:6,marginBottom:13,flexWrap:'wrap'}}>
+          {['패션','전자기기','가구','스포츠','수집품'].map(c=>(
+            <button key={c} onClick={()=>setForm(f=>({...f,cat:c}))} style={{background:form.cat===c?C.gPurple:C.card2,border:`1px solid ${form.cat===c?'transparent':C.border}`,color:form.cat===c?'#fff':C.t2,borderRadius:8,padding:'6px 12px',fontSize:12,cursor:'pointer',fontWeight:form.cat===c?700:400}}>
+              {c}
+            </button>
+          ))}
+        </div>
+        <button onClick={runAI} disabled={!form.title} style={{width:'100%',background:form.title?C.gPurple:'rgba(139,92,246,0.15)',border:'none',borderRadius:11,padding:'12px',color:'#fff',fontSize:14,fontWeight:700,cursor:form.title?'pointer':'default',display:'flex',alignItems:'center',justifyContent:'center',gap:7}}>
+          {analyzing
+            ? <><div className="spin" style={{width:15,height:15,border:`2px solid rgba(255,255,255,0.3)`,borderTopColor:'#fff',borderRadius:'50%'}}/> AI 분석 중...</>
+            : <><IBrain size={15} color="#fff"/> AI 가격 분석</>}
+        </button>
+      </div>
+
+      {aiResult && (
+        <div style={{background:C.gCard,border:`2px solid ${C.border3}`,borderRadius:15,padding:'15px',marginBottom:14,animation:'fadeIn .3s ease'}}>
+          <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:13}}>
+            <IBrain size={15} color={C.purpleL}/>
+            <span style={{fontSize:13,fontWeight:700,color:C.purpleXL}}>AI 가격 제안</span>
+            <span style={{fontSize:10,color:C.t3,marginLeft:'auto'}}>신뢰도 {aiResult.confidence}%</span>
+          </div>
+          <div style={{textAlign:'center',marginBottom:13}}>
+            <div style={{fontSize:10,color:C.t3}}>추천 등록가</div>
+            <div style={{fontSize:30,fontWeight:900,color:C.purpleXL,marginTop:2}}>{fmt(aiResult.price)}</div>
+            <div style={{fontSize:11,color:C.t3,marginTop:3}}>{fmt(aiResult.min)} ~ {fmt(aiResult.max)}</div>
+          </div>
+          <div style={{background:C.card2,borderRadius:11,padding:'11px',marginBottom:12}}>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:11,marginBottom:5}}>
+              <span style={{color:C.t3}}>최적 판매 타이밍</span>
+              <span style={{color:C.cyan,fontWeight:700}}>{aiResult.timing}</span>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontSize:11}}>
+              <span style={{color:C.t3}}>가격 상승 가능성</span>
+              <span style={{color:C.green,fontWeight:700}}>{aiResult.riseProb}%</span>
+            </div>
+          </div>
+          <div style={{display:'flex',gap:7}}>
+            <button onClick={()=>setForm(f=>({...f,price:String(aiResult.min)}))} style={{flex:1,background:C.card2,border:`1px solid ${C.border}`,borderRadius:9,padding:'9px',color:C.red,fontSize:12,cursor:'pointer',fontWeight:600}}>최저 {fmtShort(aiResult.min)}원</button>
+            <button onClick={()=>setForm(f=>({...f,price:String(aiResult.price)}))} style={{flex:1,background:C.gPurple,border:'none',borderRadius:9,padding:'9px',color:'#fff',fontSize:12,cursor:'pointer',fontWeight:700}}>추천 {fmtShort(aiResult.price)}원</button>
+            <button onClick={()=>setForm(f=>({...f,price:String(aiResult.max)}))} style={{flex:1,background:C.card2,border:`1px solid ${C.border}`,borderRadius:9,padding:'9px',color:C.green,fontSize:12,cursor:'pointer',fontWeight:600}}>최고 {fmtShort(aiResult.max)}원</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{background:C.card,border:`2px dashed ${C.border}`,borderRadius:14,padding:'22px',textAlign:'center',cursor:'pointer',marginBottom:14}}>
+        <ICamera size={30} color={C.t3}/>
+        <div style={{fontSize:12,color:C.t3,marginTop:7}}>사진 추가 (최대 10장)</div>
+      </div>
+
+      <button style={{width:'100%',background:C.gPurple,border:'none',borderRadius:13,padding:'15px',color:'#fff',fontSize:15,fontWeight:800,cursor:'pointer'}}>
+        판매 등록하기
+      </button>
+    </div>
+  );
+};
+
+/* ===== NOTIF PAGE ===== */
+const NotifPage = () => {
+  const notifs = [
+    { icon:'💎', title:'저평가 상품 발견!', desc:'나이키 에어맥스 97 — AI 시세 대비 15% 저렴. 즉시 매수 권장', time:'방금', c:C.green },
+    { icon:'📈', title:'가격 상승 알림', desc:'레고 스타워즈 팔콘 — 10% 상승 (52만원)', time:'1시간 전', c:C.purple },
+    { icon:'⚡', title:'즉시 매수 기회', desc:'샤넬 플랩백 — AI 신뢰도 91%, 즉시 매수 권장', time:'3시간 전', c:C.orange },
+    { icon:'🔔', title:'관심 상품 가격 변동', desc:'소니 WH-1000XM5 — 5% 하락. 관망 권장', time:'어제', c:C.cyan },
+    { icon:'🤖', title:'AI 주간 리포트', desc:'이번 주 최고 수익률: 레고 스타워즈 +21%. 저평가 3종 발견', time:'2일 전', c:C.yellow },
+  ];
+
+  return (
+    <div style={{padding:'20px 14px 80px'}}>
+      <div style={{fontSize:21,fontWeight:800,color:C.t1,marginBottom:3}}>알림 🔔</div>
+      <div style={{fontSize:12,color:C.t2,marginBottom:20}}>AI 실시간 시장 알림</div>
+      <div style={{display:'flex',flexDirection:'column',gap:9}}>
+        {notifs.map((n,i)=>(
+          <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:'13px',display:'flex',gap:11,alignItems:'flex-start'}}>
+            <div style={{width:38,height:38,borderRadius:'50%',background:`${n.c}20`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,flexShrink:0}}>{n.icon}</div>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:C.t1,marginBottom:3}}>{n.title}</div>
+              <div style={{fontSize:11,color:C.t2,lineHeight:1.5,marginBottom:4}}>{n.desc}</div>
+              <div style={{fontSize:10,color:C.t3}}>{n.time}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ===== MY PAGE ===== */
+const MyPage = () => {
+  const stats = [
+    {label:'거래 완료',val:'12건',icon:'📦',c:C.purple},
+    {label:'총 절약액',val:'34만원',icon:'💰',c:C.green},
+    {label:'AI 적중률',val:'87%',icon:'🎯',c:C.cyan},
+    {label:'관심 상품',val:'8개',icon:'❤️',c:C.red},
+  ];
+  const menus = [
+    {Icon:IPackage, label:'구매 내역', sub:'12건'},
+    {Icon:IBarChart,label:'AI 분석 기록', sub:'23회'},
+    {Icon:IBell,    label:'알림 설정', sub:''},
+    {Icon:IShield,  label:'보안 설정', sub:''},
+    {Icon:ISettings,label:'앱 설정', sub:''},
+    {Icon:ILogOut,  label:'로그아웃', sub:'', c:C.red},
+  ];
+
+  return (
+    <div style={{padding:'20px 14px 80px'}}>
+      <div style={{background:C.gHero,borderRadius:18,padding:'22px',marginBottom:18,textAlign:'center'}}>
+        <div style={{width:68,height:68,borderRadius:'50%',background:'rgba(255,255,255,0.12)',margin:'0 auto 10px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:32}}>👤</div>
+        <div style={{fontSize:19,fontWeight:800,color:'#fff'}}>마켓 인텔리전서</div>
+        <div style={{fontSize:12,color:'rgba(255,255,255,0.55)',marginTop:3}}>AI 등급: 🏆 플래티넘</div>
+        <div style={{display:'flex',justifyContent:'center',gap:3,marginTop:10}}>
+          {[...Array(5)].map((_,i)=><IStar key={i} size={14} color={C.yellow} fill={C.yellow}/>)}
+          <span style={{color:'#fff',marginLeft:4,fontWeight:700}}>4.9</span>
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:9,marginBottom:18}}>
+        {stats.map((s,i)=>(
+          <div key={i} style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:13,padding:'13px',textAlign:'center'}}>
+            <div style={{fontSize:22,marginBottom:5}}>{s.icon}</div>
+            <div style={{fontSize:19,fontWeight:800,color:s.c}}>{s.val}</div>
+            <div style={{fontSize:10,color:C.t3,marginTop:2}}>{s.label}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{background:C.card,border:`1px solid ${C.border}`,borderRadius:14,overflow:'hidden'}}>
+        {menus.map((m,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:13,padding:'14px',borderBottom:i<menus.length-1?`1px solid ${C.border2}`:'none',cursor:'pointer'}}>
+            <m.Icon size={19} color={m.c||C.t2}/>
+            <span style={{flex:1,fontSize:13,color:m.c||C.t1,fontWeight:500}}>{m.label}</span>
+            {m.sub && <span style={{fontSize:11,color:C.t3}}>{m.sub}</span>}
+            <IChevR size={14} color={C.t3}/>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/* ===== BOTTOM NAV ===== */
+const BottomNav = ({ tab, setTab }) => {
+  const tabs = [
+    {id:'market', label:'시장',  Icon:IHome},
+    {id:'ai',     label:'AI분석',Icon:IBrain},
+    {id:'sell',   label:'판매',  Icon:IPlus, special:true},
+    {id:'notif',  label:'알림',  Icon:IBell},
+    {id:'my',     label:'MY',    Icon:IUser},
+  ];
+  return (
+    <div style={{position:'fixed',bottom:0,left:0,right:0,maxWidth:480,margin:'0 auto',background:C.card,borderTop:`1px solid ${C.border}`,display:'flex',zIndex:100}}>
+      {tabs.map(t=>(
+        <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:'none',border:'none',padding:'9px 4px 7px',cursor:'pointer',display:'flex',flexDirection:'column',alignItems:'center',gap:2}}>
+          {t.special ? (
+            <div style={{width:42,height:42,borderRadius:'50%',background:C.gPurple,display:'flex',alignItems:'center',justifyContent:'center',marginTop:-18,boxShadow:`0 4px 18px rgba(139,92,246,0.55)`}}>
+              <t.Icon size={20} color="#fff"/>
+            </div>
+          ) : (
+            <t.Icon size={21} color={tab===t.id?C.purple:C.t3}/>
+          )}
+          <span style={{fontSize:9,color:t.special?C.purpleL:tab===t.id?C.purple:C.t3,fontWeight:tab===t.id?700:400,marginTop:t.special?3:0}}>{t.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+/* ===== FLOATING AI BUTTON ===== */
+const FloatingAI = ({ onClick }) => (
+  <button onClick={onClick} title="AI 분석 열기" style={{position:'fixed',right:14,bottom:72,width:52,height:52,borderRadius:'50%',background:C.gPurple,border:'none',cursor:'pointer',zIndex:90,fontSize:21,boxShadow:`0 6px 22px rgba(139,92,246,0.65)`,transition:'transform .18s'}}
+    onMouseEnter={e=>e.currentTarget.style.transform='scale(1.12)'}
+    onMouseLeave={e=>e.currentTarget.style.transform='scale(1)'}
+  >🔮</button>
+);
+
+/* ===== APP ===== */
+const App = () => {
+  const [tab, setTab] = useState('market');
+  const [detail, setDetail] = useState(null);
+
+  if (detail) return <DetailPage product={detail} onBack={()=>setDetail(null)}/>;
+
+  return (
+    <div style={{maxWidth:480,margin:'0 auto',minHeight:'100vh',position:'relative'}}>
+      <div style={{overflowY:'auto',height:'100vh',scrollbarWidth:'thin',scrollbarColor:`${C.purple} ${C.bg}`}}>
+        {tab==='market' && <MarketPage onProduct={setDetail}/>}
+        {tab==='ai'     && <AIPage     onProduct={setDetail}/>}
+        {tab==='sell'   && <SellPage/>}
+        {tab==='notif'  && <NotifPage/>}
+        {tab==='my'     && <MyPage/>}
+      </div>
+      <FloatingAI onClick={()=>setTab('ai')}/>
+      <BottomNav tab={tab} setTab={setTab}/>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
