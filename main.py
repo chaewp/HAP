@@ -1,12 +1,8 @@
 """
-HAP - AI 중고가격 예측 API (FastAPI + scikit-learn)
+HAP - AI Price Prediction API (Optimized for Reddit Dataset)
 ====================================================
-실행 방법:
-  pip install fastapi uvicorn pandas scikit-learn
+Usage:
   uvicorn main:app --reload --port 8000
-
-API 문서 자동 생성:
-  http://localhost:8000/docs  (Swagger UI)
 """
 
 from fastapi import FastAPI
@@ -19,239 +15,213 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, r2_score
 import os
 
-# ─── 앱 생성 ─────────────────────────────────────────────────
 app = FastAPI(
-    title="HAP AI 가격 예측 API",
-    description="에어팟 중고 거래 가격을 AI로 예측합니다",
-    version="1.0.0",
+    title="HAP AI Price Prediction API",
+    description="Predicts AirPods Pro value based on real-time Reddit r/appleswap data",
+    version="1.2.0",
 )
 
-# ─── CORS 설정 (프론트엔드에서 호출 가능하게) ────────────────
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],        # 개발 중에는 전체 허용
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ─── 전역 변수 (모델 저장용) ─────────────────────────────────
 model = None
 model_info = {}
 
-# ─── 상태 → 숫자 변환 딕셔너리 ───────────────────────────────
-CONDITION_MAP = {
-    "미개봉": 5,
-    "거의새것": 4,
-    "상": 3,
-    "중": 2,
-    "하": 1,
-}
+# ── 번들 게시물 필터링용 키워드 ──────────────────────────────
+# 이 키워드가 제목에 있으면서 쉼표도 있으면 번들로 간주
+BUNDLE_KEYWORDS = [
+    'ipad', 'iphone', 'apple watch', 'macbook',
+    'homepod', 'pencil', 'magic keyboard', 'sony', 'airtag', 'airpod 3'
+]
 
-# ─── 요청/응답 스키마 ─────────────────────────────────────────
-class PredictRequest(BaseModel):
-    """가격 예측을 위한 입력 데이터"""
-    generation: int          # 세대 (0=맥스, 1=프로1, 2=프로2/일반2, 3=일반3)
-    condition: str           # 상태: 미개봉, 거의새것, 상, 중, 하
-    usage_months: int        # 사용 개월 수 (0~36)
-    battery_health: int      # 배터리 건강 (0~100)
-    has_case: bool           # 케이스 포함 여부
-    has_cable: bool          # 케이블 포함 여부
-    original_price: int      # 정가
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "generation": 2,
-                "condition": "상",
-                "usage_months": 6,
-                "battery_health": 94,
-                "has_case": True,
-                "has_cable": False,
-                "original_price": 359000,
-            }
-        }
-
-class PredictResponse(BaseModel):
-    predicted_price: int     # AI 예측 가격
-    price_range_low: int     # 하한가
-    price_range_high: int    # 상한가
-    depreciation_pct: float  # 감가율 (%)
-    confidence: float        # 모델 신뢰도 (R² 점수)
-    tip: str                 # 한줄 조언
-
-class ModelStatus(BaseModel):
-    is_trained: bool
-    data_count: int
-    accuracy_r2: float
-    accuracy_mae: int
-    feature_importance: dict
+def is_bundle(title: str) -> bool:
+    """번들 판매 게시물 여부 판단 (에어팟 외 다른 제품이 함께 있는 경우)"""
+    t = title.lower()
+    has_other_product = any(kw in t for kw in BUNDLE_KEYWORDS)
+    has_comma = ',' in title
+    return has_other_product and has_comma
 
 
-# ─── CSV 로드 & 학습 함수 ────────────────────────────────────
+def extract_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Reddit 게시물 제목에서 피처 추출"""
+    t = df['product_name'].str.lower()
+
+    # 세대 (Pro 3 > Pro 2 > Pro 1 순서로 체크)
+    df['generation'] = 2  # default: Pro 2
+    df.loc[t.str.contains(r'pro\s*3|airpods pro 3', regex=True), 'generation'] = 3
+    df.loc[t.str.contains(r'pro\s*1|gen\s*1|1st gen|lightning', regex=True), 'generation'] = 1
+
+    # 상태/조건 피처
+    df['is_new']        = t.str.contains(r'bnib|sealed|unopened|brand new', regex=True).astype(int)
+    df['has_applecare'] = t.str.contains(r'applecare|apple care|ac\+', regex=True).astype(int)
+    df['is_usbc']       = t.str.contains(r'usb-c|usbc|usb c', regex=True).astype(int)
+
+    return df
+
+
 def train_model():
-    """CSV를 읽어서 Random Forest를 학습시킵니다."""
     global model, model_info
 
-    # CSV 경로 (main.py와 같은 폴더에 놓으세요)
-    csv_path = os.path.join(os.path.dirname(__file__), "airpods_data.csv")
-    df = pd.read_csv(csv_path)
+    csv_path = os.path.join(os.path.dirname(__file__), "reddit_airpods_data_usa.csv")
 
-    # 상태를 숫자로 변환
-    df["condition_num"] = df["condition"].map(CONDITION_MAP)
+    if not os.path.exists(csv_path):
+        print(f"Error: {csv_path} not found. Run crawler.py first.")
+        return
 
-    # 학습에 쓸 컬럼 (feature)
-    features = [
-        "generation",
-        "condition_num",
-        "usage_months",
-        "battery_health",
-        "has_case",
-        "has_cable",
-        "original_price",
-    ]
+    # ── 1. 데이터 로드 ───────────────────────────────────────
+    raw_df = pd.read_csv(csv_path)
+    print(f"Raw data loaded: {len(raw_df)} rows")
+
+    # ── 2. 번들 게시물 제거 ──────────────────────────────────
+    raw_df['_is_bundle'] = raw_df['product_name'].apply(is_bundle)
+    df = raw_df[~raw_df['_is_bundle']].copy()
+    print(f"After bundle filter: {len(df)} rows (removed {raw_df['_is_bundle'].sum()} bundles)")
+
+    # ── 3. 피처 추출 ─────────────────────────────────────────
+    df = extract_features(df)
+
+    features = ['generation', 'is_new', 'has_applecare', 'is_usbc']
     X = df[features]
-    y = df["sold_price"]
+    y = df['sold_price_usd']
 
-    # 학습/테스트 분리 (80:20)
+    # ── 4. 학습 (데이터가 적어서 test_size 줄임) ─────────────
+    if len(df) < 10:
+        print("Warning: Not enough data to train. Need at least 10 clean samples.")
+        return
+
     X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=0.2, random_state=42
+        X, y, test_size=0.15, random_state=42
     )
 
-    # Random Forest 학습
-    model = RandomForestRegressor(
-        n_estimators=100,     # 트리 100개
-        max_depth=10,         # 깊이 제한
-        random_state=42,
-    )
+    model = RandomForestRegressor(n_estimators=200, random_state=42, min_samples_leaf=2)
     model.fit(X_train, y_train)
 
-    # 성능 측정
+    # ── 5. 성능 평가 ─────────────────────────────────────────
     y_pred = model.predict(X_test)
-    r2 = r2_score(y_test, y_pred)
-    mae = mean_absolute_error(y_test, y_pred)
-
-    # Feature Importance 저장
-    importance = dict(zip(features, model.feature_importances_.round(3).tolist()))
+    mae  = mean_absolute_error(y_test, y_pred)
+    r2   = r2_score(y_test, y_pred)
 
     model_info = {
-        "data_count": len(df),
-        "r2": round(r2, 4),
-        "mae": int(mae),
-        "importance": importance,
+        "data_count":        len(df),
+        "bundle_removed":    int(raw_df['_is_bundle'].sum()),
+        "features":          features,
+        "mae_usd":           round(mae, 2),
+        "r2_score":          round(r2, 4),
+        "feature_importance": dict(zip(features, model.feature_importances_.round(4))),
+        # 학습 데이터 기준 가격 범위 (예측 범위 참고용)
+        "price_stats": {
+            "mean":   round(float(y.mean()), 2),
+            "median": round(float(y.median()), 2),
+            "min":    round(float(y.min()), 2),
+            "max":    round(float(y.max()), 2),
+        }
     }
 
-    print(f"✅ 모델 학습 완료! R²={r2:.4f}, MAE={mae:,.0f}원, 데이터 {len(df)}건")
+    print(f"✅ Model trained | samples={len(df)} | MAE=${mae:.1f} | R²={r2:.3f}")
+    print(f"   Feature importance: {model_info['feature_importance']}")
 
 
-# ─── 서버 시작 시 자동 학습 ───────────────────────────────────
+# ── 스키마 ────────────────────────────────────────────────────
+
+class PredictRequest(BaseModel):
+    generation:    int  = 2      # 1 = Pro 1세대, 2 = Pro 2세대, 3 = Pro 3세대
+    is_new:        bool = False  # BNIB / Sealed 여부
+    has_applecare: bool = False  # AppleCare+ 포함 여부
+    is_usbc:       bool = False  # USB-C 버전 여부
+
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "generation": 2,
+                "is_new": False,
+                "has_applecare": True,
+                "is_usbc": True
+            }
+        }
+    }
+
+class PredictResponse(BaseModel):
+    predicted_price_usd: float
+    price_range_low:     float
+    price_range_high:    float
+    currency:            str = "USD"
+    data_source:         str = "Reddit r/appleswap"
+    message:             str
+
+
+# ── 이벤트 & 엔드포인트 ───────────────────────────────────────
+
 @app.on_event("startup")
 def startup():
     train_model()
 
 
-# ─── API 엔드포인트 ──────────────────────────────────────────
-
-@app.get("/", tags=["기본"])
-def root():
-    """API 헬스 체크"""
-    return {"message": "🎧 HAP AI 가격 예측 API 작동 중!", "version": "1.0.0"}
-
-
-@app.get("/model/status", response_model=ModelStatus, tags=["모델"])
-def get_model_status():
-    """현재 모델의 학습 상태와 성능을 확인합니다."""
-    return ModelStatus(
-        is_trained=model is not None,
-        data_count=model_info.get("data_count", 0),
-        accuracy_r2=model_info.get("r2", 0),
-        accuracy_mae=model_info.get("mae", 0),
-        feature_importance=model_info.get("importance", {}),
-    )
-
-
-@app.post("/predict", response_model=PredictResponse, tags=["예측"])
-def predict_price(req: PredictRequest):
-    """
-    상품 정보를 받아 AI 예측 가격을 반환합니다.
-
-    - generation: 0=맥스, 1=프로1세대, 2=프로2세대/일반2세대, 3=일반3세대
-    - condition: 미개봉 / 거의새것 / 상 / 중 / 하
-    - usage_months: 사용 개월 수
-    - battery_health: 배터리 건강도 (0~100)
-    - has_case, has_cable: 구성품 포함 여부
-    - original_price: 정가 (원)
-    """
-    # 입력값을 모델이 이해하는 형태로 변환
-    condition_num = CONDITION_MAP.get(req.condition, 3)
-
-    input_data = pd.DataFrame([{
-        "generation": req.generation,
-        "condition_num": condition_num,
-        "usage_months": req.usage_months,
-        "battery_health": req.battery_health,
-        "has_case": int(req.has_case),
-        "has_cable": int(req.has_cable),
-        "original_price": req.original_price,
-    }])
-
-    # 예측
-    predicted = int(model.predict(input_data)[0])
-
-    # 가격 범위 (±8% 정도)
-    margin = int(predicted * 0.08)
-    low = max(predicted - margin, 0)
-    high = predicted + margin
-
-    # 1000원 단위로 반올림
-    predicted = round(predicted / 1000) * 1000
-    low = round(low / 1000) * 1000
-    high = round(high / 1000) * 1000
-
-    # 감가율
-    depreciation = round((1 - predicted / req.original_price) * 100, 1)
-
-    # 간단한 조언 생성
-    tip = generate_tip(req, predicted)
-
-    return PredictResponse(
-        predicted_price=predicted,
-        price_range_low=low,
-        price_range_high=high,
-        depreciation_pct=depreciation,
-        confidence=model_info.get("r2", 0),
-        tip=tip,
-    )
-
-
-@app.post("/retrain", tags=["모델"])
-def retrain():
-    """CSV 데이터가 업데이트되면 이걸 호출해서 모델을 다시 학습시킵니다."""
-    train_model()
+@app.get("/")
+def health_check():
     return {
-        "message": "모델 재학습 완료!",
-        "r2": model_info["r2"],
-        "mae": model_info["mae"],
-        "data_count": model_info["data_count"],
+        "status":        "online",
+        "model_trained": model is not None,
+        "model_info":    model_info,
     }
 
 
-# ─── 조언 생성 (간단 규칙) ───────────────────────────────────
-def generate_tip(req: PredictRequest, predicted: int):
-    ratio = predicted / req.original_price
-
-    if req.condition == "미개봉":
-        return "미개봉 제품은 수요가 높아요. 정가 대비 좋은 가격에 거래 가능합니다!"
-    elif ratio >= 0.7:
-        return "감가가 적은 편이에요. 지금이 판매 적기입니다!"
-    elif ratio >= 0.5:
-        return "적정 시세 구간이에요. 구성품이 있으면 가격을 더 받을 수 있어요."
-    elif req.usage_months >= 18:
-        return "사용 기간이 긴 편이에요. 빠른 거래를 원하면 조금 낮게 설정해보세요."
-    else:
-        return "배터리 상태가 가격에 큰 영향을 줘요. 배터리 건강도를 명시하면 신뢰도가 올라갑니다."
+@app.get("/model/status")
+def model_status():
+    return model_info
 
 
-# ─── 직접 실행할 때 ──────────────────────────────────────────
+@app.post("/retrain")
+def retrain():
+    train_model()
+    return {"status": "retrained", "model_info": model_info}
+
+
+@app.post("/predict", response_model=PredictResponse)
+def predict(req: PredictRequest):
+    if model is None:
+        return PredictResponse(
+            predicted_price_usd=0,
+            price_range_low=0,
+            price_range_high=0,
+            message="Model not trained. Run /retrain or check that reddit_airpods_data_usa.csv exists.",
+        )
+
+    input_data = pd.DataFrame([{
+        "generation":    req.generation,
+        "is_new":        int(req.is_new),
+        "has_applecare": int(req.has_applecare),
+        "is_usbc":       int(req.is_usbc),
+    }])
+
+    prediction = float(model.predict(input_data)[0])
+
+    # 가격 범위: 데이터 MAE 기반으로 ±범위 산정 (최소 ±10%)
+    margin = max(model_info.get("mae_usd", prediction * 0.1), prediction * 0.10)
+    low    = round(max(prediction - margin, 0), 2)
+    high   = round(prediction + margin, 2)
+
+    # 메시지
+    parts = []
+    if req.is_new:
+        parts.append("Sealed/BNIB premium applied.")
+    if req.has_applecare:
+        parts.append("AppleCare+ adds value.")
+    if req.is_usbc:
+        parts.append("USB-C model priced higher.")
+    msg = " ".join(parts) if parts else "Standard used market price."
+
+    return PredictResponse(
+        predicted_price_usd=round(prediction, 2),
+        price_range_low=low,
+        price_range_high=high,
+        message=msg,
+    )
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
