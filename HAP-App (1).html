@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAP — Used Electronics</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Bebas+Neue&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green: #7FFF00;
+    --black: #0a0a0a;
+    --dark: #141414;
+    --card: #1c1c1c;
+    --border: #2a2a2a;
+    --text: #f0f0f0;
+    --muted: #888;
+    --red: #ff4444;
+    --blue: #4a9eff;
+    --orange: #ff6b00;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background:#0d0d0d; color:var(--text);
+    font-family:'Noto Sans KR',sans-serif;
+    min-height:100vh; display:flex;
+    justify-content:center; align-items:flex-start;
+    padding:40px 16px 100px;
+  }
+  .phone {
+    width:390px; height:844px; background:var(--dark);
+    border-radius:40px; overflow:hidden; position:relative;
+    box-shadow:0 0 0 1px var(--border),0 40px 80px rgba(0,0,0,.7),0 0 80px rgba(127,255,0,.06);
+    display:flex; flex-direction:column;
+  }
+  .page { display:none; flex-direction:column; flex:1; overflow:hidden; animation:fadeUp .2s ease; }
+  .page.active { display:flex; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .scroll-content { flex:1; overflow-y:auto; scrollbar-width:none; padding-bottom:20px; }
+  .scroll-content::-webkit-scrollbar { display:none; }
+  .header {
+    padding:20px 20px 12px; display:flex; align-items:center;
+    justify-content:space-between; background:var(--dark); flex-shrink:0;
+  }
+  .logo { font-family:'Fredoka One',cursive; font-size:40px; color:var(--green); letter-spacing:1px; line-height:1; }
+  .back-btn { display:flex; align-items:center; gap:6px; color:var(--text); font-size:15px; cursor:pointer; background:none; border:none; font-family:'Noto Sans KR',sans-serif; }
+  .back-btn svg { width:18px; height:18px; }
+  .icon-btn { background:none; border:none; color:var(--muted); cursor:pointer; padding:4px; display:flex; align-items:center; }
+  .bottom-nav { display:flex; background:var(--dark); border-top:1px solid var(--border); flex-shrink:0; }
+  .nav-item {
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    padding:10px 0 14px; cursor:pointer; gap:3px; color:var(--muted);
+    font-size:10px; transition:color .2s; border:none; background:none;
+    font-family:'Noto Sans KR',sans-serif; position:relative;
+  }
+  .nav-item.active { color:var(--green); }
+  .nav-item svg { width:22px; height:22px; }
+  .nav-dot::after {
+    content:''; position:absolute; top:8px; right:50%; margin-right:-18px;
+    width:7px; height:7px; background:var(--red); border-radius:50%; border:2px solid var(--dark);
+  }
+  .search-bar {
+    margin:0 20px 14px; display:flex; align-items:center;
+    background:#222; border:1px solid var(--border); border-radius:12px;
+    padding:10px 14px; gap:10px; flex-shrink:0;
+  }
+  .search-bar input { flex:1; background:none; border:none; color:var(--text); font-size:14px; font-family:'Noto Sans KR',sans-serif; outline:none; }
+  .search-bar input::placeholder { color:var(--muted); }
+  .tags { display:flex; gap:8px; padding:0 20px 14px; overflow-x:auto; scrollbar-width:none; flex-shrink:0; }
+  .tags::-webkit-scrollbar { display:none; }
+  .tag { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:500; white-space:nowrap; cursor:pointer; border:1px solid var(--border); background:transparent; color:var(--muted); transition:all .2s; font-family:'Noto Sans KR',sans-serif; }
+  .tag.active { background:var(--green); color:var(--black); border-color:var(--green); }
+  .section-title { padding:4px 20px 12px; display:flex; align-items:center; justify-content:space-between; }
+  .section-title h3 { font-size:14px; font-weight:700; }
+  .section-title span { font-size:12px; color:var(--green); cursor:pointer; }
+  .product-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; padding:0 20px; }
+  .product-card { background:var(--card); border-radius:16px; overflow:hidden; cursor:pointer; border:1px solid var(--border); transition:transform .15s,border-color .15s; }
+  .product-card:active { transform:scale(.97); }
+  .product-card:hover { border-color:var(--green); }
+  .product-img { width:100%; aspect-ratio:1; background:#222; display:flex; align-items:center; justify-content:center; font-size:42px; position:relative; }
+  .badge { position:absolute; top:8px; left:8px; font-size:10px; font-weight:700; padding:3px 8px; border-radius:6px; }
+  .badge.best { background:var(--green); color:var(--black); }
+  .badge.hot { background:var(--orange); color:white; }
+  .product-info { padding:10px 12px 12px; }
+  .product-name { font-size:12px; font-weight:500; margin-bottom:4px; line-height:1.3; }
+  .product-price { font-size:14px; font-weight:700; color:var(--green); }
+  /* HOME */
+  .profile-section { margin:4px 20px 16px; background:var(--card); border-radius:16px; padding:16px; border:1px solid var(--border); display:flex; align-items:center; gap:14px; }
+  .avatar { width:48px; height:48px; border-radius:50%; background:#333; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .profile-name { font-size:15px; font-weight:700; margin-bottom:2px; }
+  .profile-sub { font-size:11px; color:var(--muted); }
+  .quick-menu { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:0 20px 16px; }
+  .quick-item { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:border-color .2s; }
+  .quick-item:hover { border-color:var(--green); }
+  .quick-item-icon { font-size:20px; }
+  .quick-item-label { font-size:13px; font-weight:500; }
+  .history-section { margin:0 20px; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; }
+  .history-title { font-size:12px; font-weight:700; margin-bottom:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.5px; }
+  .history-item { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+  .history-item:last-child { border-bottom:none; padding-bottom:0; }
+  .history-emoji { font-size:20px; }
+  .history-name { font-size:13px; font-weight:500; }
+  .history-price { font-size:11px; color:var(--green); margin-top:2px; }
+  .history-more { margin-top:12px; text-align:right; font-size:12px; color:var(--green); cursor:pointer; }
+  /* DETAIL */
+  .detail-img { width:100%; aspect-ratio:1; background:#1a1a1a; display:flex; align-items:center; justify-content:center; font-size:100px; flex-shrink:0; }
+  .detail-body { padding:20px; }
+  .detail-category { font-size:11px; color:var(--green); font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
+  .detail-name { font-size:20px; font-weight:700; margin-bottom:14px; line-height:1.3; }
+  .detail-price { font-size:32px; font-weight:700; color:var(--green); font-family:'Bebas Neue',sans-serif; letter-spacing:1px; margin-bottom:4px; }
+  .price-range { font-size:12px; color:var(--muted); margin-bottom:18px; }
+  .ai-box { background:#111; border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:18px; }
+  .ai-box-title { font-size:12px; color:var(--muted); margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+  .ai-badge { background:var(--green); color:var(--black); font-size:10px; font-weight:700; padding:2px 6px; border-radius:4px; }
+  .ai-options { display:flex; flex-direction:column; gap:10px; margin-bottom:14px; }
+  .ai-option-row { display:flex; align-items:center; justify-content:space-between; }
+  .ai-option-label { font-size:13px; color:var(--muted); }
+  .toggle-group { display:flex; gap:6px; }
+  .toggle-btn { padding:5px 12px; border-radius:8px; font-size:12px; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-family:'Noto Sans KR',sans-serif; transition:all .15s; }
+  .toggle-btn.on { background:var(--green); color:var(--black); border-color:var(--green); font-weight:700; }
+  .gen-select { background:#222; border:1px solid var(--border); color:var(--text); font-family:'Noto Sans KR',sans-serif; font-size:13px; padding:5px 10px; border-radius:8px; outline:none; }
+  .predict-btn { width:100%; padding:13px; background:var(--green); color:var(--black); border:none; border-radius:12px; font-size:14px; font-weight:700; font-family:'Noto Sans KR',sans-serif; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; transition:opacity .2s; }
+  .predict-btn:hover { opacity:.85; }
+  .predict-btn:disabled { opacity:.5; cursor:not-allowed; }
+  .ai-result { margin-top:14px; padding:14px; background:rgba(127,255,0,.07); border:1px solid rgba(127,255,0,.25); border-radius:12px; display:none; }
+  .ai-result.show { display:block; }
+  .ai-result-price { font-size:28px; font-weight:700; font-family:'Bebas Neue',sans-serif; color:var(--green); letter-spacing:1px; }
+  .ai-result-range { font-size:12px; color:var(--muted); margin-top:2px; margin-bottom:8px; }
+  .ai-result-msg { font-size:12px; color:#aaa; line-height:1.5; }
+  .ai-error { margin-top:12px; padding:10px 14px; background:rgba(255,68,68,.1); border:1px solid rgba(255,68,68,.3); border-radius:10px; font-size:12px; color:#ff8888; display:none; }
+  .ai-error.show { display:block; }
+  .spec-list { display:flex; flex-direction:column; gap:0; margin-bottom:20px; }
+  .spec-row { display:flex; justify-content:space-between; font-size:13px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .spec-row:last-child { border-bottom:none; }
+  .spec-key { color:var(--muted); }
+  .spec-val { font-weight:500; }
+  .btn-row { display:flex; gap:10px; margin-top:4px; }
+  .btn-buy { flex:1; padding:15px; background:var(--green); color:var(--black); border:none; border-radius:14px; font-size:16px; font-weight:700; font-family:'Bebas Neue',sans-serif; letter-spacing:1px; cursor:pointer; }
+  .btn-sell { flex:1; padding:15px; background:transparent; color:var(--green); border:2px solid var(--green); border-radius:14px; font-size:16px; font-weight:700; font-family:'Bebas Neue',sans-serif; letter-spacing:1px; cursor:pointer; }
+  /* SELL */
+  .sell-body { padding:20px; display:flex; flex-direction:column; gap:16px; }
+  .form-group { display:flex; flex-direction:column; gap:8px; }
+  .form-label { font-size:11px; color:var(--muted); font-weight:700; letter-spacing:.5px; text-transform:uppercase; }
+  .form-input { background:#1a1a1a; border:1px solid var(--border); border-radius:12px; padding:12px 14px; color:var(--text); font-size:14px; font-family:'Noto Sans KR',sans-serif; outline:none; transition:border-color .2s; width:100%; }
+  .form-input:focus { border-color:var(--green); }
+  .form-input::placeholder { color:var(--muted); }
+  textarea.form-input { resize:none; height:80px; line-height:1.5; }
+  .photo-row { display:flex; gap:10px; }
+  .photo-box { width:72px; height:72px; background:#1a1a1a; border:1px dashed var(--border); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:22px; cursor:pointer; flex-shrink:0; transition:border-color .2s; }
+  .photo-box:hover { border-color:var(--green); }
+  .condition-row { display:flex; gap:8px; }
+  .cond-btn { flex:1; padding:9px 4px; border-radius:10px; font-size:12px; font-weight:500; border:1px solid var(--border); background:transparent; color:var(--muted); cursor:pointer; font-family:'Noto Sans KR',sans-serif; transition:all .15s; text-align:center; }
+  .cond-btn.on { background:var(--green); color:var(--black); border-color:var(--green); }
+  .ai-suggest-box { background:#111; border:1px solid var(--border); border-radius:14px; padding:14px; }
+  .ai-suggest-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .ai-suggest-title { font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px; }
+  .ai-suggest-price { font-size:24px; font-weight:700; font-family:'Bebas Neue',sans-serif; color:var(--green); letter-spacing:1px; }
+  .ai-suggest-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+  .apply-btn { margin-top:10px; padding:8px 14px; background:transparent; border:1px solid var(--green); color:var(--green); border-radius:8px; font-size:12px; font-family:'Noto Sans KR',sans-serif; cursor:pointer; }
+  .submit-btn { width:100%; padding:15px; background:var(--green); color:var(--black); border:none; border-radius:14px; font-size:16px; font-weight:700; font-family:'Bebas Neue',sans-serif; letter-spacing:1px; cursor:pointer; }
+  /* NOTIFICATION */
+  .notif-tabs { display:flex; gap:6px; padding:0 20px 14px; flex-shrink:0; }
+  .notif-tab { padding:6px 14px; border-radius:20px; font-size:12px; font-weight:600; cursor:pointer; border:none; font-family:'Noto Sans KR',sans-serif; transition:all .2s; background:#222; color:var(--muted); }
+  .notif-tab.active { background:var(--green); color:var(--black); }
+  .notif-list { display:flex; flex-direction:column; gap:10px; padding:0 20px; }
+  .notif-card { background:var(--card); border-radius:14px; padding:14px; border:1px solid var(--border); display:flex; gap:12px; align-items:flex-start; cursor:pointer; }
+  .notif-card.unread { border-color:rgba(127,255,0,.3); background:rgba(127,255,0,.04); }
+  .notif-card.pricing { border-left:3px solid var(--green); }
+  .notif-card.sales { border-left:3px solid var(--blue); }
+  .notif-card.notices { border-left:3px solid var(--muted); }
+  .notif-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .notif-icon.pricing { background:rgba(127,255,0,.1); }
+  .notif-icon.sales { background:rgba(74,158,255,.1); }
+  .notif-icon.notices { background:rgba(136,136,136,.1); }
+  .notif-content { flex:1; }
+  .notif-title { font-size:13px; font-weight:700; margin-bottom:3px; }
+  .notif-desc { font-size:12px; color:var(--muted); line-height:1.4; margin-bottom:6px; }
+  .notif-time { font-size:11px; color:#555; }
+  /* BASKET */
+  .basket-list { display:flex; flex-direction:column; gap:10px; padding:0 20px; }
+  .basket-card { background:var(--card); border-radius:14px; padding:14px; border:1px solid var(--border); display:flex; gap:12px; align-items:center; }
+  .basket-img { width:56px; height:56px; background:#222; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:28px; flex-shrink:0; }
+  .basket-info { flex:1; }
+  .basket-name { font-size:13px; font-weight:600; margin-bottom:4px; }
+  .basket-price { font-size:15px; font-weight:700; color:var(--green); }
+  .basket-remove { background:none; border:none; color:var(--muted); cursor:pointer; font-size:20px; padding:4px; }
+  .basket-total { margin:16px 20px 0; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; }
+  .basket-total-row { display:flex; justify-content:space-between; font-size:13px; margin-bottom:10px; color:var(--muted); }
+  .basket-total-row.total { font-size:16px; font-weight:700; color:var(--green); border-top:1px solid var(--border); padding-top:10px; margin-top:4px; margin-bottom:0; }
+  .checkout-btn { width:100%; margin-top:12px; padding:14px; background:var(--green); color:var(--black); border:none; border-radius:12px; font-size:15px; font-weight:700; font-family:'Bebas Neue',sans-serif; letter-spacing:1px; cursor:pointer; }
+  /* MY LIST */
+  .list-tabs { display:flex; margin:0 20px 16px; background:#1a1a1a; border-radius:12px; padding:4px; flex-shrink:0; }
+  .list-tab { flex:1; padding:8px; text-align:center; border-radius:9px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:transparent; color:var(--muted); font-family:'Noto Sans KR',sans-serif; transition:all .2s; }
+  .list-tab.active { background:var(--card); color:var(--text); }
+  .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:60px 20px; color:var(--muted); gap:10px; }
+  .empty-state .empty-icon { font-size:48px; }
+  .empty-state p { font-size:14px; text-align:center; line-height:1.5; }
+  .loading-dots span { animation:blink 1.2s infinite; opacity:0; }
+  .loading-dots span:nth-child(2) { animation-delay:.2s; }
+  .loading-dots span:nth-child(3) { animation-delay:.4s; }
+  @keyframes blink { 0%,80%,100%{opacity:0} 40%{opacity:1} }
+  .toast { position:fixed; bottom:100px; left:50%; transform:translateX(-50%) translateY(20px); background:#333; color:white; padding:10px 20px; border-radius:20px; font-size:13px; opacity:0; transition:all .3s; pointer-events:none; z-index:999; white-space:nowrap; }
+  .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<div class="phone">
+
+  <!-- HOME -->
+  <div class="page active" id="page-home">
+    <div class="header">
+      <div class="logo">HAP</div>
+      <button class="icon-btn"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg></button>
+    </div>
+    <div class="scroll-content">
+      <div class="profile-section">
+        <div class="avatar">👤</div>
+        <div style="flex:1">
+          <div class="profile-name">***NAME***</div>
+          <div class="profile-sub">HAP Member · 3 listings</div>
+        </div>
+        <button class="icon-btn"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+      </div>
+      <div class="quick-menu">
+        <div class="quick-item" onclick="showPage('page-mylist')"><span class="quick-item-icon">📋</span><span class="quick-item-label">My List</span></div>
+        <div class="quick-item" onclick="showPage('page-search')"><span class="quick-item-icon">🕐</span><span class="quick-item-label">Recently Viewed</span></div>
+        <div class="quick-item" onclick="showPage('page-sell')"><span class="quick-item-icon">📦</span><span class="quick-item-label">Post</span></div>
+        <div class="quick-item" onclick="showPage('page-mylist')"><span class="quick-item-icon">❤️</span><span class="quick-item-label">Favorites</span></div>
+      </div>
+      <div class="history-section">
+        <div class="history-title">History</div>
+        <div class="history-item" onclick="openDetail(0)"><span class="history-emoji">🎧</span><div style="flex:1"><div class="history-name">AirPods Pro 2 USB-C</div><div class="history-price">$110</div></div></div>
+        <div class="history-item" onclick="openDetail(2)"><span class="history-emoji">💻</span><div style="flex:1"><div class="history-name">MacBook Air M2</div><div class="history-price">$750</div></div></div>
+        <div class="history-item" onclick="openDetail(1)"><span class="history-emoji">📱</span><div style="flex:1"><div class="history-name">iPhone 15 Pro 128GB</div><div class="history-price">$620</div></div></div>
+        <div class="history-more" onclick="showPage('page-search')">More &gt;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="page" id="page-search">
+    <div class="header"><div class="logo">HAP</div></div>
+    <div class="search-bar">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Search electronics..." id="search-input" oninput="applyFilters()">
+    </div>
+    <div class="tags">
+      <button class="tag active" onclick="filterTag(this,'all')">All</button>
+      <button class="tag" onclick="filterTag(this,'audio')">🎧 Audio</button>
+      <button class="tag" onclick="filterTag(this,'phone')">📱 Phones</button>
+      <button class="tag" onclick="filterTag(this,'laptop')">💻 Laptops</button>
+      <button class="tag" onclick="filterTag(this,'tablet')">📟 Tablets</button>
+      <button class="tag" onclick="filterTag(this,'watch')">⌚ Wearables</button>
+    </div>
+    <div class="section-title"><h3 id="grid-label">🔥 Best Sellers</h3><span>See all</span></div>
+    <div class="scroll-content"><div class="product-grid" id="product-grid"></div></div>
+  </div>
+
+  <!-- DETAIL -->
+  <div class="page" id="page-detail">
+    <div class="header">
+      <button class="back-btn" onclick="showPage('page-search')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Back</button>
+      <button class="icon-btn" onclick="addToBasket()"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></button>
+    </div>
+    <div class="scroll-content">
+      <div class="detail-img" id="detail-emoji" style="font-size:100px;display:flex;align-items:center;justify-content:center;aspect-ratio:1;background:#1a1a1a;"></div>
+      <div class="detail-body">
+        <div class="detail-category" id="detail-category">Audio</div>
+        <div class="detail-name" id="detail-name">Product Name</div>
+        <div class="detail-price" id="detail-price">$0</div>
+        <div class="price-range" id="detail-range">Market range: —</div>
+        <div class="ai-box" id="detail-ai-box">
+          <div class="ai-box-title"><span class="ai-badge">AI</span>AI Price Prediction — Reddit r/appleswap</div>
+          <div class="ai-options">
+            <div class="ai-option-row"><span class="ai-option-label">Generation</span>
+              <select class="gen-select" id="sel-gen"><option value="3">Pro 3rd Gen</option><option value="2" selected>Pro 2nd Gen</option><option value="1">Pro 1st Gen</option></select>
+            </div>
+            <div class="ai-option-row"><span class="ai-option-label">Sealed / BNIB</span>
+              <div class="toggle-group"><button class="toggle-btn" id="new-yes" onclick="toggle('new','yes')">Yes</button><button class="toggle-btn on" id="new-no" onclick="toggle('new','no')">No</button></div>
+            </div>
+            <div class="ai-option-row"><span class="ai-option-label">AppleCare+</span>
+              <div class="toggle-group"><button class="toggle-btn" id="ac-yes" onclick="toggle('ac','yes')">Yes</button><button class="toggle-btn on" id="ac-no" onclick="toggle('ac','no')">No</button></div>
+            </div>
+            <div class="ai-option-row"><span class="ai-option-label">USB-C</span>
+              <div class="toggle-group"><button class="toggle-btn on" id="usbc-yes" onclick="toggle('usbc','yes')">Yes</button><button class="toggle-btn" id="usbc-no" onclick="toggle('usbc','no')">No</button></div>
+            </div>
+          </div>
+          <button class="predict-btn" id="predict-btn" onclick="runPredict()">✦ Get AI Price</button>
+          <div class="ai-result" id="ai-result">
+            <div class="ai-result-price" id="ai-price">$0</div>
+            <div class="ai-result-range" id="ai-range"></div>
+            <div class="ai-result-msg" id="ai-msg"></div>
+          </div>
+          <div class="ai-error" id="ai-error">⚠️ Cannot connect to HAP backend. Start the server at <b>localhost:8000</b>.</div>
+        </div>
+        <div class="spec-list" id="detail-specs"></div>
+        <div class="btn-row">
+          <button class="btn-buy" onclick="showToast('Purchase flow coming soon!')">BUY</button>
+          <button class="btn-sell" onclick="showPage('page-sell')">SELL</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTIFICATION -->
+  <div class="page" id="page-notif">
+    <div class="header">
+      <div class="logo">HAP</div>
+      <button class="icon-btn" onclick="showToast('All marked as read ✓')"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>
+    </div>
+    <div class="notif-tabs">
+      <button class="notif-tab active" onclick="filterNotif(this,'all')">All</button>
+      <button class="notif-tab" onclick="filterNotif(this,'pricing')">Pricing</button>
+      <button class="notif-tab" onclick="filterNotif(this,'sales')">Sales</button>
+      <button class="notif-tab" onclick="filterNotif(this,'notices')">Notices</button>
+    </div>
+    <div class="scroll-content"><div class="notif-list" id="notif-list"></div></div>
+  </div>
+
+  <!-- BASKET -->
+  <div class="page" id="page-basket">
+    <div class="header">
+      <div class="logo">HAP</div>
+      <button class="icon-btn" onclick="clearBasket()"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+    </div>
+    <div class="scroll-content">
+      <div class="basket-list" id="basket-list"></div>
+      <div class="basket-total" id="basket-total" style="display:none">
+        <div class="basket-total-row"><span>Subtotal</span><span id="basket-subtotal">$0</span></div>
+        <div class="basket-total-row"><span>Shipping est.</span><span>$5.00</span></div>
+        <div class="basket-total-row total"><span>Total</span><span id="basket-grand">$0</span></div>
+        <button class="checkout-btn" onclick="showToast('Checkout coming soon!')">CHECKOUT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MY LIST -->
+  <div class="page" id="page-mylist">
+    <div class="header">
+      <button class="back-btn" onclick="showPage('page-home')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Back</button>
+      <div style="font-size:15px;font-weight:700;">My Items</div>
+      <div style="width:60px"></div>
+    </div>
+    <div class="list-tabs" style="flex-shrink:0">
+      <button class="list-tab active" onclick="switchListTab(this,'mylist-listings')">My Listings</button>
+      <button class="list-tab" onclick="switchListTab(this,'mylist-favorites')">Favorites ❤️</button>
+    </div>
+    <div class="scroll-content">
+      <div id="mylist-listings"><div class="notif-list" id="my-listings-list"></div></div>
+      <div id="mylist-favorites" style="display:none"><div class="notif-list" id="my-favorites-list"></div></div>
+    </div>
+  </div>
+
+  <!-- SELL -->
+  <div class="page" id="page-sell">
+    <div class="header">
+      <button class="back-btn" onclick="showPage('page-home')"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>Back</button>
+      <div style="font-size:15px;font-weight:700;">Post Item</div>
+      <div style="width:60px"></div>
+    </div>
+    <div class="scroll-content">
+      <div class="sell-body">
+        <div class="form-group"><label class="form-label">Photos</label><div class="photo-row"><div class="photo-box">📷</div><div class="photo-box">+</div><div class="photo-box">+</div></div></div>
+        <div class="form-group"><label class="form-label">Title</label><input class="form-input" type="text" placeholder="e.g. AirPods Pro 2 USB-C" id="sell-title"></div>
+        <div class="form-group"><label class="form-label">Category</label>
+          <select class="form-input" id="sell-category" onchange="onCategoryChange()">
+            <option value="">Select category...</option>
+            <option value="audio">🎧 Audio (AirPods, Headphones)</option>
+            <option value="phone">📱 Phones</option>
+            <option value="laptop">💻 Laptops</option>
+            <option value="tablet">📟 Tablets</option>
+            <option value="watch">⌚ Wearables</option>
+          </select>
+        </div>
+        <div class="form-group" id="airpods-options" style="display:none"><label class="form-label">AirPods Generation</label>
+          <select class="form-input" id="sell-gen"><option value="3">AirPods Pro 3rd Gen</option><option value="2">AirPods Pro 2nd Gen</option><option value="1">AirPods Pro 1st Gen</option></select>
+        </div>
+        <div class="form-group"><label class="form-label">Condition</label>
+          <div class="condition-row">
+            <button class="cond-btn" onclick="setCond(this,'new')">New</button>
+            <button class="cond-btn on" onclick="setCond(this,'like-new')">Like New</button>
+            <button class="cond-btn" onclick="setCond(this,'good')">Good</button>
+            <button class="cond-btn" onclick="setCond(this,'fair')">Fair</button>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Description</label><textarea class="form-input" placeholder="Describe your item..."></textarea></div>
+        <div class="form-group"><label class="form-label">Your Price (USD)</label><input class="form-input" type="number" placeholder="$0" id="sell-price"></div>
+        <div class="ai-suggest-box" id="sell-ai-box" style="display:none">
+          <div class="ai-suggest-header">
+            <div class="ai-suggest-title"><span class="ai-badge">AI</span>Suggested Price</div>
+            <button class="predict-btn" style="width:auto;padding:7px 14px;font-size:12px;" onclick="runSellPredict()">Analyze</button>
+          </div>
+          <div id="sell-ai-result" style="display:none">
+            <div class="ai-suggest-price" id="sell-ai-price">$0</div>
+            <div class="ai-suggest-sub" id="sell-ai-range"></div>
+            <button class="apply-btn" onclick="applySuggestedPrice()">Apply this price ↗</button>
+          </div>
+        </div>
+        <button class="submit-btn" onclick="submitListing()">POST LISTING</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="showPage('page-home')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home
+    </button>
+    <button class="nav-item" id="nav-search" onclick="showPage('page-search')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Buy & Sell
+    </button>
+    <button class="nav-item nav-dot" id="nav-notif" onclick="showPage('page-notif')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notification
+    </button>
+    <button class="nav-item" id="nav-basket" onclick="showPage('page-basket')">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Basket
+    </button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API_URL = 'http://localhost:8000';
+
+const products = [
+  { id:0, emoji:'🎧', name:'AirPods Pro 2 USB-C',    price:110, badge:'best', cat:'audio',  aiEnabled:true,  specs:[['Condition','Used — Good'],['Location','New York, NY'],['Listed','2 hours ago'],['Source','Reddit r/appleswap']] },
+  { id:1, emoji:'📱', name:'iPhone 15 Pro 128GB',     price:620, badge:'hot',  cat:'phone',  aiEnabled:false, specs:[['Storage','128GB'],['Color','Natural Titanium'],['Condition','Like New'],['Listed','5 hours ago']] },
+  { id:2, emoji:'💻', name:'MacBook Air M2 8GB',      price:750, badge:'best', cat:'laptop', aiEnabled:false, specs:[['Chip','Apple M2'],['RAM','8GB'],['Storage','256GB'],['Condition','Good']] },
+  { id:3, emoji:'⌚', name:'Apple Watch Series 9',    price:230, badge:null,   cat:'watch',  aiEnabled:false, specs:[['Size','45mm'],['Color','Midnight'],['Condition','Like New'],['Listed','1 day ago']] },
+  { id:4, emoji:'🎧', name:'AirPods Pro 3 BNIB',      price:185, badge:'hot',  cat:'audio',  aiEnabled:true,  specs:[['Condition','Sealed / BNIB'],['Location','CA'],['Listed','30 min ago'],['Source','Reddit r/appleswap']] },
+  { id:5, emoji:'📟', name:'iPad Air M2 11"',         price:450, badge:null,   cat:'tablet', aiEnabled:false, specs:[['Storage','128GB'],['Color','Space Gray'],['Condition','Good'],['Listed','3 days ago']] },
+  { id:6, emoji:'🎧', name:'AirPods Pro 1 Lightning', price:75,  badge:null,   cat:'audio',  aiEnabled:true,  specs:[['Condition','Fair'],['Location','TX'],['Listed','1 day ago'],['Source','Reddit r/appleswap']] },
+  { id:7, emoji:'📱', name:'iPhone 14 Pro 256GB',     price:480, badge:null,   cat:'phone',  aiEnabled:false, specs:[['Storage','256GB'],['Color','Deep Purple'],['Condition','Good'],['Listed','2 days ago']] },
+];
+
+const notifications = [
+  { type:'pricing', icon:'📈', title:'Nike Dunk',            desc:'Price dropped from $100 → $70!',           time:'Yesterday', unread:true },
+  { type:'sales',   icon:'👁',  title:'Recent Item Price Change', desc:'The hoodie dropped by $40!',           time:'1 hour ago', unread:true },
+  { type:'sales',   icon:'💬', title:'A buyer sent you a message', desc:'James: Hello this is James I want...', time:'10 min ago', unread:false },
+  { type:'notices', icon:'📢', title:'System maintenance Notice', desc:'Scheduled maintenance Apr 25, 2AM.',   time:'10 min ago', unread:false },
+  { type:'pricing', icon:'📉', title:'Adidas Hoodie',         desc:'Price increased 8%',                       time:'Today',     unread:false },
+  { type:'pricing', icon:'📈', title:'Vans Old Skool',        desc:'Price dropped from $80 → $65!',           time:'10 min ago', unread:false },
+];
+
+let basket = [];
+let myListings = [
+  { emoji:'🎧', name:'AirPods Pro 2 USB-C', price:110, status:'Active' },
+  { emoji:'💻', name:'MacBook Air M1',      price:650, status:'Sold' },
+];
+let favorites = [
+  { emoji:'📱', name:'iPhone 15 Pro 128GB',  price:620 },
+  { emoji:'⌚', name:'Apple Watch Series 9', price:230 },
+];
+
+const state = { new:'no', ac:'no', usbc:'yes', sellCondition:'like-new', sellAiPrice:null, currentFilter:'all', currentDetailId:0 };
+
+const navMap = { 'page-home':'nav-home','page-search':'nav-search','page-detail':'nav-search','page-sell':'nav-search','page-notif':'nav-notif','page-basket':'nav-basket','page-mylist':'nav-home' };
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const nav = document.getElementById(navMap[id]);
+  if (nav) nav.classList.add('active');
+  if (id === 'page-notif') renderNotifs('all');
+  if (id === 'page-basket') renderBasket();
+  if (id === 'page-mylist') renderMyList();
+}
+
+function renderProducts(list) {
+  const grid = document.getElementById('product-grid');
+  if (!list.length) { grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--muted)">No items found</div>'; return; }
+  grid.innerHTML = list.map(p => `
+    <div class="product-card" onclick="openDetail(${p.id})">
+      <div class="product-img">${p.badge ? `<div class="badge ${p.badge}">${p.badge.toUpperCase()}</div>` : ''}${p.emoji}</div>
+      <div class="product-info"><div class="product-name">${p.name}</div><div class="product-price">$${p.price}</div></div>
+    </div>`).join('');
+}
+
+function filterTag(btn, cat) {
+  document.querySelectorAll('.tag').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  state.currentFilter = cat;
+  document.getElementById('grid-label').textContent = cat === 'all' ? '🔥 Best Sellers' : btn.textContent + ' Items';
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase();
+  let list = products;
+  if (state.currentFilter !== 'all') list = list.filter(p => p.cat === state.currentFilter);
+  if (q) list = list.filter(p => p.name.toLowerCase().includes(q));
+  renderProducts(list);
+}
+
+function openDetail(id) {
+  const p = products[id];
+  state.currentDetailId = id;
+  document.getElementById('detail-emoji').textContent = p.emoji;
+  document.getElementById('detail-category').textContent = p.cat.charAt(0).toUpperCase() + p.cat.slice(1);
+  document.getElementById('detail-name').textContent = p.name;
+  document.getElementById('detail-price').textContent = `$${p.price}`;
+  document.getElementById('detail-range').textContent = `Market range: $${Math.round(p.price*.85)} – $${Math.round(p.price*1.15)}`;
+  document.getElementById('detail-ai-box').style.display = p.aiEnabled ? 'block' : 'none';
+  document.getElementById('detail-specs').innerHTML = p.specs.map(([k,v]) => `<div class="spec-row"><span class="spec-key">${k}</span><span class="spec-val">${v}</span></div>`).join('');
+  document.getElementById('ai-result').classList.remove('show');
+  document.getElementById('ai-error').classList.remove('show');
+  showPage('page-detail');
+}
+
+function renderNotifs(filter) {
+  const list = filter === 'all' ? notifications : notifications.filter(n => n.type === filter);
+  document.getElementById('notif-list').innerHTML = list.length
+    ? list.map(n => `<div class="notif-card ${n.unread?'unread':''} ${n.type}" onclick="showToast('Opened')"><div class="notif-icon ${n.type}">${n.icon}</div><div class="notif-content"><div class="notif-title">${n.title}</div><div class="notif-desc">${n.desc}</div><div class="notif-time">${n.time}</div></div></div>`).join('')
+    : '<div class="empty-state"><div class="empty-icon">🔔</div><p>No notifications</p></div>';
+}
+
+function filterNotif(btn, type) {
+  document.querySelectorAll('.notif-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderNotifs(type);
+}
+
+function addToBasket() {
+  const p = products[state.currentDetailId];
+  if (basket.find(b => b.id === p.id)) { showToast('Already in basket!'); return; }
+  basket.push(p);
+  showToast(`${p.emoji} Added to basket!`);
+}
+
+function renderBasket() {
+  const list = document.getElementById('basket-list');
+  const total = document.getElementById('basket-total');
+  if (!basket.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">🛒</div><p>Your basket is empty.<br>Browse items to add!</p></div>'; total.style.display = 'none'; return; }
+  list.innerHTML = basket.map((p,i) => `<div class="basket-card"><div class="basket-img">${p.emoji}</div><div class="basket-info"><div class="basket-name">${p.name}</div><div class="basket-price">$${p.price}</div></div><button class="basket-remove" onclick="removeFromBasket(${i})">×</button></div>`).join('');
+  const sub = basket.reduce((s,p) => s+p.price, 0);
+  document.getElementById('basket-subtotal').textContent = `$${sub}`;
+  document.getElementById('basket-grand').textContent = `$${sub+5}`;
+  total.style.display = 'block';
+}
+
+function removeFromBasket(i) { basket.splice(i,1); renderBasket(); showToast('Removed'); }
+function clearBasket() { basket=[]; renderBasket(); showToast('Basket cleared'); }
+
+function renderMyList() {
+  document.getElementById('my-listings-list').innerHTML = myListings.length
+    ? myListings.map(item => `<div class="basket-card"><div class="basket-img">${item.emoji}</div><div class="basket-info"><div class="basket-name">${item.name}</div><div class="basket-price">$${item.price} · <span style="color:${item.status==='Sold'?'var(--muted)':'var(--green)'}">${item.status}</span></div></div></div>`).join('')
+    : '<div class="empty-state"><div class="empty-icon">📋</div><p>No listings yet</p></div>';
+  document.getElementById('my-favorites-list').innerHTML = favorites.length
+    ? favorites.map((item,i) => `<div class="basket-card"><div class="basket-img">${item.emoji}</div><div class="basket-info"><div class="basket-name">${item.name}</div><div class="basket-price">$${item.price}</div></div><button class="basket-remove" onclick="removeFav(${i})">♡</button></div>`).join('')
+    : '<div class="empty-state"><div class="empty-icon">❤️</div><p>No favorites yet</p></div>';
+}
+
+function removeFav(i) { favorites.splice(i,1); renderMyList(); showToast('Removed from favorites'); }
+
+function switchListTab(btn, targetId) {
+  document.querySelectorAll('.list-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('mylist-listings').style.display = targetId === 'mylist-listings' ? 'block' : 'none';
+  document.getElementById('mylist-favorites').style.display = targetId === 'mylist-favorites' ? 'block' : 'none';
+}
+
+function onCategoryChange() {
+  const cat = document.getElementById('sell-category').value;
+  const isAudio = cat === 'audio';
+  document.getElementById('airpods-options').style.display = isAudio ? 'flex' : 'none';
+  document.getElementById('sell-ai-box').style.display = isAudio ? 'block' : 'none';
+  document.getElementById('sell-ai-result').style.display = 'none';
+}
+
+function setCond(btn, val) {
+  state.sellCondition = val;
+  document.querySelectorAll('.cond-btn').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+function submitListing() {
+  const title = document.getElementById('sell-title').value;
+  if (!title) { showToast('Please enter a title'); return; }
+  myListings.unshift({ emoji:'📦', name:title, price:parseInt(document.getElementById('sell-price').value)||0, status:'Active' });
+  showToast('Posted successfully! 🎉');
+  setTimeout(() => showPage('page-home'), 1200);
+}
+
+function toggle(key, val) {
+  state[key] = val;
+  document.getElementById(`${key}-yes`).classList.toggle('on', val==='yes');
+  document.getElementById(`${key}-no`).classList.toggle('on', val==='no');
+}
+
+async function runPredict() {
+  const btn = document.getElementById('predict-btn');
+  const resultEl = document.getElementById('ai-result');
+  const errorEl = document.getElementById('ai-error');
+  resultEl.classList.remove('show'); errorEl.classList.remove('show');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="loading-dots"><span>.</span><span>.</span><span>.</span></span>';
+  try {
+    const res = await fetch(`${API_URL}/predict`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ generation:parseInt(document.getElementById('sel-gen').value), is_new:state.new==='yes', has_applecare:state.ac==='yes', is_usbc:state.usbc==='yes' }) });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    document.getElementById('ai-price').textContent = `$${data.predicted_price_usd}`;
+    document.getElementById('ai-range').textContent = `Range: $${data.price_range_low} – $${data.price_range_high}`;
+    document.getElementById('ai-msg').textContent = data.message;
+    resultEl.classList.add('show');
+  } catch(e) { errorEl.classList.add('show'); }
+  finally { btn.disabled=false; btn.innerHTML='✦ Get AI Price'; }
+}
+
+async function runSellPredict() {
+  document.getElementById('sell-ai-result').style.display = 'none';
+  try {
+    const res = await fetch(`${API_URL}/predict`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ generation:parseInt(document.getElementById('sell-gen').value), is_new:state.sellCondition==='new', has_applecare:false, is_usbc:false }) });
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    state.sellAiPrice = data.predicted_price_usd;
+    document.getElementById('sell-ai-price').textContent = `$${data.predicted_price_usd}`;
+    document.getElementById('sell-ai-range').textContent = `Range: $${data.price_range_low} – $${data.price_range_high}`;
+    document.getElementById('sell-ai-result').style.display = 'block';
+  } catch(e) { showToast('⚠️ Cannot connect to backend'); }
+}
+
+function applySuggestedPrice() { if (state.sellAiPrice) document.getElementById('sell-price').value = state.sellAiPrice; }
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+renderProducts(products);
+</script>
+</body>
+</html>
